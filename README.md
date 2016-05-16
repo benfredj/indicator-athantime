@@ -1,23 +1,23 @@
 # indicator-athantime
 This is a Ubuntu indicator that shows the athan times.
-
+- 
 
 It depends on the libraries: gtk+-2.0 gstreamer-0.10 appindicator-0.1 itl
-
+- 
 
 How to use:
 
 make
 
 sudo make install
-
+- 
 
 Set your preferences:
 
 edit the file $HOME/.athantime.conf
 
 add the application (/usr/bin/indicator-athantime) it to your stratup application
-
+- 
 
 TODO:
 
@@ -28,7 +28,7 @@ TODO:
 Thanks:
 
 The work was inspired from the Minbar application
-
+- 
 
 
 By: Ouissem Ben Fredj
