@@ -14,7 +14,7 @@ Set your preferences:
 - 
 edit the file $HOME/.athantime.conf
 
-add the application (/usr/bin/indicator-athantime) it to your stratup application
+add the application (/usr/bin/indicator-athantime) to your startup application
 
 
 TODO:
