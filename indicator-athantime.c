@@ -19,6 +19,10 @@
 #include <gst/gst.h>
 //to play athan sound file
 
+#include <time.h>               /* for time_t */
+
+#include <itl/hijri.h>
+
 #define TRACE(...) if (trace) { printf( __VA_ARGS__); fflush(stdout); } else {}
 struct config configstruct;
 bool trace = false;
@@ -49,11 +53,12 @@ GtkWidget *interfaces_menu;
 
 GtkWidget * athantimes_items[6];
 GtkWidget *stopathan_item;
+GtkWidget *hijri_item;
 GtkWidget *quit_item;
 #define FILENAME ".athantime.conf"
 #define MAXBUF 1024
 #define DELIM "="
-char tempstr[MAXBUF];
+
 struct config
 {
    double lat;
@@ -64,9 +69,31 @@ struct config
    int method;
    char athan[MAXBUF];
 };
+
+sDate hijridate;
+void getCurrentHijriDate() 
+{
+   time_t mytime;
+   struct tm *t_ptr;
+   int day, month, year;
+   time(&mytime);
+
+   t_ptr = localtime(&mytime);
+   /* Set current time values */
+   day   = t_ptr->tm_mday;
+   month = t_ptr->tm_mon  + 1;
+   year	 = t_ptr->tm_year + 1900;
+
+   /* umm_alqura code */
+
+   G2H(&hijridate, day, month, year);
+   //printf("Umm-AlQura Date:     %d/%d/%d", mydate.day, mydate.month, mydate.year);
+
+}
+
 void get_config(char *filename)
 {
-        
+        char tempstr[MAXBUF];
 		configstruct.lat = 0;
 		
 		struct passwd *pw = getpwuid(getuid());
@@ -402,7 +429,15 @@ int main (int argc, char **argv)
 
     indicator_menu = gtk_menu_new();
 
-    //add interfaces menu
+    getCurrentHijriDate();
+    char currenthijridate[20];
+    sprintf(currenthijridate,"%d/%d/%d \xD9\x87\xD9\x80",hijridate.year, hijridate.month, hijridate.day);
+    hijri_item = gtk_menu_item_new_with_label(currenthijridate); //hijri date item
+    gtk_menu_shell_append(GTK_MENU_SHELL(indicator_menu), hijri_item);
+    
+    //separator
+    GtkWidget *sep = gtk_separator_menu_item_new();
+    gtk_menu_shell_append(GTK_MENU_SHELL(indicator_menu), sep);
 	
 	 for (i=0; i<6; i++) {
        athantimes_items[i] = gtk_image_menu_item_new_with_label("");
@@ -410,7 +445,7 @@ int main (int argc, char **argv)
     }
 	
     //separator
-    GtkWidget *sep = gtk_separator_menu_item_new();
+    sep = gtk_separator_menu_item_new();
     gtk_menu_shell_append(GTK_MENU_SHELL(indicator_menu), sep);
     
     stopathan_item = gtk_menu_item_new_with_label("\xD8\xA3\xD9\x88\xD9\x82\xD9\x81\x20\xD8\xA7\xD9\x84\xD8\xA3\xD8\xB0\xD8\xA7\xD9\x86"); //stop athan item
@@ -418,9 +453,9 @@ int main (int argc, char **argv)
     g_signal_connect(stopathan_item, "activate", G_CALLBACK (stop_athan_callback), NULL);
     
     //quit item
-    quit_item = gtk_menu_item_new_with_label("\xD8\xA3\xD8\xBA\xD9\x84\xD9\x82"); //quit item
-    gtk_menu_shell_append(GTK_MENU_SHELL(indicator_menu), quit_item);
-    g_signal_connect(quit_item, "activate", G_CALLBACK (gtk_main_quit), NULL);
+    //quit_item = gtk_menu_item_new_with_label("\xD8\xA3\xD8\xBA\xD9\x84\xD9\x82"); //quit item
+    //gtk_menu_shell_append(GTK_MENU_SHELL(indicator_menu), quit_item);
+    //g_signal_connect(quit_item, "activate", G_CALLBACK (gtk_main_quit), NULL);
 
     gtk_widget_show_all(indicator_menu);
 
