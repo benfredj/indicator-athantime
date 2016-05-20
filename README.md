@@ -1,7 +1,14 @@
 # indicator-athantime
 This is a Ubuntu indicator that shows the athan times.
 
-It depends on the libraries: gtk+-2.0 gstreamer-0.10 appindicator-0.1 itl
+It depends on the libraries: -litl -lm `pkg-config --libs gtk+-3.0` `pkg-config --libs  appindicator3-0.1` `pkg-config --libs  gstreamer-1.0`
+
+Features:
+- 
++ shows athan times
++ shows current hijri date (based on the Umm Alqura Calendar)
++ play athan sound
++ play notification sound before and after athan
 
 How to use:
 - 
