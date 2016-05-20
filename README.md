@@ -7,8 +7,8 @@ Features:
 - 
 + shows athan times
 + shows current hijri date (based on the Umm Alqura Calendar)
-+ play athan sound
-+ play notification sound before and after athan
++ plays athan sound
++ plays notification sound before and after athan
 
 How to use:
 - 
