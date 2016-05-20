@@ -33,12 +33,12 @@ Date *prayerDate;
 static gchar *next_prayer_string;
 
 gchar *names[] = {
-	"\xD8\xA7\xD9\x84\xD8\xB5\xD8\xA8\xD8\xAD",
-	"\xD8\xA7\xD9\x84\xD8\xB4\xD8\xB1\xD9\x88\xD9\x82",
-	"\xD8\xA7\xD9\x84\xD8\xB8\xD9\x87\xD8\xB1",
-	"\xD8\xA7\xD9\x84\xD8\xB9\xD8\xB5\xD8\xB1",
-	"\xD8\xA7\xD9\x84\xD9\x85\xD8\xBA\xD8\xB1\xD8\xA8",
-	"\xD8\xA7\xD9\x84\xD8\xB9\xD8\xB4\xD8\xA7\xD8\xA1"
+	"\xD8\xA7\xD9\x84\xD8\xB5\xD8\xA8\xD8\xAD", //sobh
+	"\xD8\xA7\xD9\x84\xD8\xB4\xD8\xB1\xD9\x88\xD9\x82", //
+	"\xD8\xA7\xD9\x84\xD8\xB8\xD9\x87\xD8\xB1", //
+	"\xD8\xA7\xD9\x84\xD8\xB9\xD8\xB5\xD8\xB1", //
+	"\xD8\xA7\xD9\x84\xD9\x85\xD8\xBA\xD8\xB1\xD8\xA8", //
+	"\xD8\xA7\xD9\x84\xD8\xB9\xD8\xB4\xD8\xA7\xD8\xA1" //isha
 };
 /* update period in seconds */
 int period = 59;
@@ -63,11 +63,24 @@ struct config
 {
    double lat;
    double lon;
-   char name[MAXBUF];
+   char city[MAXBUF];
    double height;
    int correctiond;
    int method;
    char athan[MAXBUF];
+   gboolean noAthan;
+   char notificationfile[MAXBUF];   
+   gboolean noNotify;
+   int beforeSobh;
+   int afterSobh;
+   int beforeDohr;
+   int afterDohr;
+   int beforeAsr;
+   int afterAsr;
+   int beforeMaghrib;
+   int afterMaghrib;
+   int beforeIsha;
+   int afterIsha;
 };
 
 sDate hijridate;
@@ -95,6 +108,18 @@ void get_config(char *filename)
 {
         char tempstr[MAXBUF];
 		configstruct.lat = 0;
+		configstruct.noAthan = 1;
+		configstruct.noNotify = 1;
+		configstruct.beforeSobh = 0;
+		configstruct.afterSobh = 0;
+		configstruct.beforeDohr = 0;
+		configstruct.afterDohr = 0;
+		configstruct.beforeAsr = 0;
+		configstruct.afterAsr = 0;
+		configstruct.beforeMaghrib = 0;
+		configstruct.afterMaghrib = 0;
+		configstruct.beforeIsha = 0;
+		configstruct.afterIsha = 0;
 		
 		struct passwd *pw = getpwuid(getuid());
 		
@@ -125,8 +150,8 @@ void get_config(char *filename)
                                 configstruct.lon = atof(tempstr);
                                 //printf("%s",configstruct.ccserver);
                         } else if (i == 2){
-                                memcpy(configstruct.name,cfline,strlen(cfline));
-                                 configstruct.name[strlen( configstruct.name)-1] = '\0';
+                                memcpy(configstruct.city,cfline,strlen(cfline));
+                                 configstruct.city[strlen( configstruct.city)-1] = '\0';
                                 //printf("%s",configstruct.port);
                         } else if (i == 3){
                                 memcpy(tempstr,cfline,strlen(cfline));
@@ -143,7 +168,59 @@ void get_config(char *filename)
                         } else if (i == 6){
                                 memcpy(configstruct.athan,cfline,strlen(cfline));
                                 configstruct.athan[strlen( configstruct.athan)-1] = '\0';
-                                //printf("%s",configstruct.getcmd);
+                        }   else if (i == 7){
+                                memcpy(configstruct.notificationfile,cfline,strlen(cfline));
+                                configstruct.notificationfile[strlen( configstruct.notificationfile)-1] = '\0';
+                        }   else if (i == 8){
+                                memcpy(tempstr,cfline,strlen(cfline));
+                                configstruct.beforeSobh = atoi(tempstr);
+                                if(configstruct.beforeSobh<0 || configstruct.beforeSobh>1440/* one day*/)
+									configstruct.beforeSobh = 0;
+                        }   else if (i == 9){
+                                memcpy(tempstr,cfline,strlen(cfline));
+                                configstruct.afterSobh = atoi(tempstr);
+                                if(configstruct.afterSobh<0 || configstruct.afterSobh>1440/* one day*/)
+									configstruct.afterSobh = 0;
+                        }   else if (i == 10){
+                                memcpy(tempstr,cfline,strlen(cfline));
+                                configstruct.beforeDohr = atoi(tempstr);
+                                if(configstruct.beforeDohr<0 || configstruct.beforeDohr>1440/* one day*/)
+									configstruct.beforeDohr = 0;
+                        }   else if (i == 11){
+                                memcpy(tempstr,cfline,strlen(cfline));
+                                configstruct.afterDohr = atoi(tempstr);
+                                if(configstruct.afterDohr<0 || configstruct.afterDohr>1440/* one day*/)
+									configstruct.afterDohr = 0;
+                        }   else if (i == 12){
+                                memcpy(tempstr,cfline,strlen(cfline));
+                                configstruct.beforeAsr = atoi(tempstr);
+                                if(configstruct.beforeAsr<0 || configstruct.beforeAsr>1440/* one day*/)
+									configstruct.beforeAsr = 0;
+                        }   else if (i == 13){
+                                memcpy(tempstr,cfline,strlen(cfline));
+                                configstruct.afterAsr = atoi(tempstr);
+                                if(configstruct.afterAsr<0 || configstruct.afterAsr>1440/* one day*/)
+									configstruct.afterAsr = 0;
+                        }   else if (i == 14){
+                                memcpy(tempstr,cfline,strlen(cfline));
+                                configstruct.beforeMaghrib = atoi(tempstr);
+                                if(configstruct.beforeMaghrib<0 || configstruct.beforeMaghrib>1440/* one day*/)
+									configstruct.beforeMaghrib = 0;
+                        }   else if (i == 15){
+                                memcpy(tempstr,cfline,strlen(cfline));
+                                configstruct.afterMaghrib = atoi(tempstr);
+                                if(configstruct.afterMaghrib<0 || configstruct.afterMaghrib>1440/* one day*/)
+									configstruct.afterMaghrib = 0;
+                        }   else if (i == 16){
+                                memcpy(tempstr,cfline,strlen(cfline));
+                                configstruct.beforeIsha = atoi(tempstr);
+                                if(configstruct.beforeIsha<0 || configstruct.beforeIsha>1440/* one day*/)
+									configstruct.beforeIsha = 0;
+                        }   else if (i == 17){
+                                memcpy(tempstr,cfline,strlen(cfline));
+                                configstruct.afterIsha = atoi(tempstr);
+                                if(configstruct.afterIsha<0 || configstruct.afterIsha>1440/* one day*/)
+									configstruct.afterIsha = 0;
                         }             
                         i++;
                 } // End while
@@ -152,32 +229,6 @@ void get_config(char *filename)
 			
 		}
         //return configstruct;
-}
-
-// Taken from minbar
-void 
-next_prayer(void)
-{   
-    /* current time */
-    time_t result;
-    struct tm * curtime;
-    result      = time(NULL);
-    curtime     = localtime(&result);
-
-    int i;
-    for (i = 0; i < 6; i++)
-    {
-        if ( i == 1 ) { continue ;} /* skip shorouk */
-        next_prayer_id = i;
-        if(ptList[i].hour > curtime->tm_hour || 
-            (ptList[i].hour == curtime->tm_hour && 
-            ptList[i].minute >= curtime->tm_min))
-        {
-            return;
-        }
-    }
-
-    next_prayer_id = 0; 
 }
 
 // Taken from minbar
@@ -275,12 +326,9 @@ on_pad_added (GstElement *element,
   gst_object_unref (sinkpad);
 }
 
-void play_athan(){
-
-	if(noAthan == 1) return;
-	stop_athan_callback();
+void play_soundfile(char *filename){
+	
   loop = g_main_loop_new (NULL, FALSE);
-
 
   /* Create gstreamer elements */
   pipeline = gst_pipeline_new ("audio-player");
@@ -298,7 +346,7 @@ void play_athan(){
   /* Set up the pipeline */
 
   /* we set the input filename to the source element */
-  g_object_set (G_OBJECT (source), "location", configstruct.athan, NULL);
+  g_object_set (G_OBJECT (source), "location", filename, NULL);
 
   /* we add a message handler */
   bus = gst_pipeline_get_bus (GST_PIPELINE (pipeline));
@@ -333,6 +381,32 @@ void play_athan(){
   TRACE ("gstreamer: Returned, stopping playback\n");
   stop_athan_callback();
 }
+// Taken from minbar
+void 
+next_prayer(void)
+{   
+    /* current time */
+    time_t result;
+    struct tm * curtime;
+    result      = time(NULL);
+    curtime     = localtime(&result);
+
+    int i;
+    for (i = 0; i < 6; i++)
+    {
+        if ( i == 1 ) { continue ;} /* skip shorouk */
+        next_prayer_id = i;
+        if(ptList[i].hour > curtime->tm_hour || 
+            (ptList[i].hour == curtime->tm_hour && 
+            ptList[i].minute >= curtime->tm_min))
+        {
+            return;
+        }
+    }
+
+    next_prayer_id = 0; 
+}
+
 // Taken and modified from minbar
 void 
 update_remaining(void)
@@ -341,6 +415,8 @@ update_remaining(void)
     int next_minutes = ptList[next_prayer_id].minute + ptList[next_prayer_id].hour*60;
     time_t  result;
     struct  tm * curtime;
+    int prev_prayer_id;
+    gchar *label_guide = "100000000000.000000000";   //maximum length label text, doesn't really work atm
 
     result  = time(NULL);
     curtime = localtime(&result);
@@ -350,24 +426,86 @@ update_remaining(void)
         /* salat is on next day (subh, and even Isha sometimes) after midnight */
         next_minutes += 60*24;
     }
-
+	if(!next_prayer_id) prev_prayer_id=6;
+	else if(next_prayer_id==2) prev_prayer_id=0;
+	else prev_prayer_id=next_prayer_id-1;
+	int prev_minutes = ptList[prev_prayer_id].minute + ptList[prev_prayer_id].hour*60;
+	int difference_prev_prayer = cur_minutes - prev_minutes;
+	TRACE("difference prev prayer=%d\n",difference_prev_prayer);
+	if(!configstruct.noNotify && difference_prev_prayer){
+		TRACE("difference next prayer=%d\n",difference_prev_prayer);
+		switch(prev_prayer_id){
+			case 0: //sobh
+				if(difference_prev_prayer==configstruct.afterSobh)
+					play_soundfile(configstruct.notificationfile);
+				break;
+			case 2: //dohr
+				if(difference_prev_prayer==configstruct.afterDohr)
+					play_soundfile(configstruct.notificationfile);				
+				break;
+			case 3: //asr
+				if(difference_prev_prayer==configstruct.afterAsr)
+					play_soundfile(configstruct.notificationfile);			
+				break;
+			case 4: //maghrib
+				if(difference_prev_prayer==configstruct.afterMaghrib)
+					play_soundfile(configstruct.notificationfile);			
+				break;
+			case 5: //isha
+				if(difference_prev_prayer==configstruct.afterIsha)
+					play_soundfile(configstruct.notificationfile);	
+				break;
+			
+		}
+	}
+	 
     int difference = next_minutes - cur_minutes;
     int hours = difference / 60;
     int minutes = difference % 60;
-
+    TRACE("difference next prayer=%d\n",difference);
+    if(!configstruct.noNotify && difference){
+		TRACE("difference next prayer=%d\n",difference);
+		switch(next_prayer_id){
+			case 0: //sobh
+				if(difference==configstruct.beforeSobh)
+					play_soundfile(configstruct.notificationfile);
+				break;
+			case 2: //dohr
+				if(difference==configstruct.beforeDohr)
+					play_soundfile(configstruct.notificationfile);				
+				break;
+			case 3: //asr
+				if(difference==configstruct.beforeAsr)
+					play_soundfile(configstruct.notificationfile);			
+				break;
+			case 4: //maghrib
+				if(difference==configstruct.beforeMaghrib)
+					play_soundfile(configstruct.notificationfile);			
+				break;
+			case 5: //isha
+				if(difference==configstruct.beforeIsha)
+					play_soundfile(configstruct.notificationfile);	
+				break;
+			
+		}
+	}
     if (difference == 0)
     {
         g_snprintf(next_prayer_string, 400,
           ("\xD8\xAD\xD8\xA7\xD9\x86\x20\xD9\x88\xD9\x82\xD8\xAA\x20\xD8\xB5\xD9\x84\xD8\xA7\xD8\xA9 %s"),  // _("Time for %s"), 
             names[next_prayer_id]);
-            
-            
-          play_athan();
+		app_indicator_set_label(indicator, next_prayer_string, label_guide);
+		 
+          if(!noAthan){
+			  stop_athan_callback();
+			play_soundfile(configstruct.athan);
+		}
 			
     }
     else
     {
         g_snprintf(next_prayer_string, 400, "%s %d:%02d-", names[next_prayer_id], hours, minutes);
+        app_indicator_set_label(indicator, next_prayer_string, label_guide);
     }
 }
 
@@ -378,9 +516,13 @@ update_data(gpointer data)
     update_remaining();
     //menu_item_set_label(GTK_MENU_ITEM(menu), next_prayer_string);
 
-    gchar *label_guide = "100000000000.000000000";   //maximum length label text, doesn't really work atm
-    app_indicator_set_label(indicator, next_prayer_string, label_guide);
-
+   
+	
+	getCurrentHijriDate();
+    char currenthijridate[20];
+    sprintf(currenthijridate,"%d/%d/%d \xD9\x87\xD9\x80",hijridate.year, hijridate.month, hijridate.day);
+	g_object_set(hijri_item, "label", currenthijridate, NULL);
+	
     return TRUE;
 }
 
@@ -413,20 +555,42 @@ int main (int argc, char **argv)
         TRACE("Reading config file:\n");
         TRACE("lat: %f\n",configstruct.lat);
         TRACE("lon: %f\n",configstruct.lon);
-        TRACE("name: %s\n",configstruct.name);
+        TRACE("city: %s\n",configstruct.city);
         TRACE("height: %f\n",configstruct.height);
         TRACE("correctiond: %d\n",configstruct.correctiond);
         TRACE("method: %d\n",configstruct.method);
         TRACE("athan file: %s\n",configstruct.athan);
+        TRACE("notification file: %s\n",configstruct.notificationfile);
+        TRACE("before sobh: %d\n",configstruct.beforeSobh);
+        TRACE("afetr sobh: %d\n",configstruct.afterSobh);
+        TRACE("before dohr: %d\n",configstruct.beforeDohr);
+        TRACE("afetr dohr: %d\n",configstruct.afterDohr);
+        TRACE("before asr: %d\n",configstruct.beforeAsr);
+        TRACE("afetr asr: %d\n",configstruct.afterAsr);
+        TRACE("before maghrib: %d\n",configstruct.beforeMaghrib);
+        TRACE("afetr maghrib: %d\n",configstruct.afterMaghrib);
+        TRACE("before isha: %d\n",configstruct.beforeIsha);
+        TRACE("afetr isha: %d\n",configstruct.afterIsha);
         
 		FILE *file = fopen (configstruct.athan, "r");		
         if (file == NULL){
-			TRACE("Athan sound file not set or corrupted!\n");
-			noAthan = 1;
+			TRACE("Athan sound file not set or corrupted: %s!\n", configstruct.athan);
+			configstruct.noAthan = 1;
 		}else{			
-			noAthan = 0;
+			configstruct.noAthan = 0;
+			fclose(file);
 		}
-
+		
+		file = fopen (configstruct.notificationfile, "r");		
+        if (file == NULL){
+			TRACE("Notification sound file not set or corrupted: %s!\n", configstruct.notificationfile);
+			configstruct.noNotify = 1;
+		}else{			
+			configstruct.noNotify = 0;
+			fclose(file);
+		}
+	
+	
     indicator_menu = gtk_menu_new();
 
     getCurrentHijriDate();
@@ -440,7 +604,7 @@ int main (int argc, char **argv)
     gtk_menu_shell_append(GTK_MENU_SHELL(indicator_menu), sep);
 	
 	 for (i=0; i<6; i++) {
-       athantimes_items[i] = gtk_image_menu_item_new_with_label("");
+       athantimes_items[i] = gtk_menu_item_new_with_label("");
 		gtk_menu_shell_append(GTK_MENU_SHELL(indicator_menu), athantimes_items[i]);
     }
 	
@@ -487,10 +651,11 @@ int main (int argc, char **argv)
     gchar *prayer_time_text[6];
     for (i=0; i<6; i++) {
         prayer_time_text[i] = g_malloc(100);
-        g_snprintf(prayer_time_text[i], 100, "%s %d:%02d", names[i], ptList[i].hour, ptList[i].minute); 
+        g_snprintf(prayer_time_text[i], 100, "%s: %d:%02d", names[i], ptList[i].hour, ptList[i].minute); 
 
         //gtk_label_set_text(GTK_LABEL(prayer_times_label[i]), prayer_time_text[i]);
-        gtk_menu_item_set_label(GTK_MENU_ITEM(athantimes_items[i]), prayer_time_text[i]);
+        //gtk_menu_item_set_label(GTK_MENU_ITEM(athantimes_items[i]), prayer_time_text[i]);
+        g_object_set(athantimes_items[i], "label", prayer_time_text[i], NULL);
     }
         
      // Next prayer
