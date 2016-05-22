@@ -18,6 +18,8 @@ install:
 	mkdir -p /usr/share/indicator-athantime
 	cp athan.ogg /usr/share/indicator-athantime
 	cp Rooster_Short_Crow.ogg /usr/share/indicator-athantime
+	cp Warbling_Vireo-Mike_Koenig-89869915.ogg /usr/share/indicator-athantime
+	cp killdeer_song-Mike_Koenig-1144525481.ogg /usr/share/indicator-athantime
 
 uninstall:
 	rm /usr/bin/indicator-athantime

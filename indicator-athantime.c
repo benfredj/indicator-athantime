@@ -373,7 +373,7 @@ void play_soundfile(char *filename){
 
 
   /* Set the pipeline to "playing" state*/
-  TRACE ("gstreamer: Now playing: %s\n", configstruct.athan);
+  TRACE ("gstreamer: Now playing: %s\n", filename);
   gst_element_set_state (pipeline, GST_STATE_PLAYING);
   g_main_loop_run (loop);
   
