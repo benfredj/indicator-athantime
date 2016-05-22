@@ -1,5 +1,6 @@
 # indicator-athantime
-This is a Ubuntu indicator that shows the athan times.
+This is an Linux indicator (tested in Ubuntu) that shows the athan times (salat times for muslims).
+مؤشر لنظام لينكس يعرض أوقات الأذان (أوقات الصلاة)
 
 It depends on the libraries: -litl -lm `pkg-config --libs gtk+-3.0` `pkg-config --libs  appindicator3-0.1` `pkg-config --libs  gstreamer-1.0`
 
