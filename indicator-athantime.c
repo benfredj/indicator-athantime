@@ -42,7 +42,6 @@ gchar *names[] = {
 };
 /* update period in seconds */
 int period = 59;
-int noAthan = 1;
 gboolean first_run = TRUE;
 
 GSettings *settings;
@@ -264,7 +263,7 @@ void stop_athan_callback()
 	// clean up nicely
 	if(GST_IS_ELEMENT (pipeline))
 	{	
-		TRACE ("stopping Athan\n");
+		TRACE ("stopping sound\n");
 		gst_element_set_state (pipeline, GST_STATE_NULL);
 		gst_object_unref (GST_OBJECT (pipeline));
 		g_source_remove (bus_watch_id);
@@ -489,6 +488,7 @@ update_remaining(void)
 			
 		}
 	}
+	    
     if (difference == 0)
     {
         g_snprintf(next_prayer_string, 400,
@@ -496,13 +496,12 @@ update_remaining(void)
             names[next_prayer_id]);
 		app_indicator_set_label(indicator, next_prayer_string, label_guide);
 		 
-          if(!noAthan){
+          if(!configstruct.noAthan){
 			  stop_athan_callback();
 			play_soundfile(configstruct.athan);
 		}
 			
-    }
-    else
+    }else
     {
         g_snprintf(next_prayer_string, 400, "%s %d:%02d-", names[next_prayer_id], hours, minutes);
         app_indicator_set_label(indicator, next_prayer_string, label_guide);
