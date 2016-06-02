@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg:svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   width="204"
+   height="166"
+   id="svg3052"
+   version="1.1"
+   inkscape:version="0.48.4 r9939"
+   sodipodi:docname="indicator-athantime.svg">
+  <svg:metadata
+     id="metadata3079">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+      </cc:Work>
+    </rdf:RDF>
+  </svg:metadata>
+  <svg:defs
+     id="defs3077" />
+  <sodipodi:namedview
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1"
+     objecttolerance="10"
+     gridtolerance="10"
+     guidetolerance="10"
+     inkscape:pageopacity="0"
+     inkscape:pageshadow="2"
+     inkscape:window-width="1317"
+     inkscape:window-height="744"
+     id="namedview3075"
+     showgrid="false"
+     inkscape:zoom="2.5508208"
+     inkscape:cx="113.17463"
+     inkscape:cy="60.748104"
+     inkscape:window-x="49"
+     inkscape:window-y="24"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg3052" />
+  <!-- Created with SVG-edit - http://svg-edit.googlecode.com/ -->
+  <svg:g
+     id="g3054"
+     transform="translate(-174.06162,3.9203069)">
+    <svg:title
+       id="title3056">Layer 1</svg:title>
+  </svg:g>
+  <style
+     type="text/css"
+     id="undefined" />
+  <svg:rect
+     style="fill:#ffffff;fill-opacity:0"
+     id="rect3810"
+     width="205.42407"
+     height="165.43694"
+     x="-0.78406131"
+     y="0.56305778" />
+  <svg:g
+     id="svg_20"
+     transform="matrix(0.95727891,0,0,0.97396654,3.5345148,5.6183834)">
+    <svg:g
+       id="svg_19">
+      <svg:path
+         id="svg_3"
+         d="m 1.5,3.000015 110.5,-3 92,4 -0.5,146.000015 -97.5,16 -104.5,-19.5 0,-143.500015 z"
+         inkscape:connector-curvature="0"
+         style="fill:#000000;stroke:#000000;stroke-width:5;stroke-linecap:round;stroke-linejoin:bevel;stroke-dasharray:none" />
+      <svg:path
+         id="svg_4"
+         d="m 3.5,4.000015 107.5,-4 91,4 -100.5,6.5 -98,-6.5 z"
+         inkscape:connector-curvature="0"
+         style="fill:#7f7f7f;stroke:#000000;stroke-width:2;stroke-linecap:round;stroke-linejoin:bevel;stroke-dasharray:none" />
+      <svg:path
+         id="svg_5"
+         d="m 1.5,41.500015 100,9 100.5,-7 -0.5,12 -100.5,7.5 -101,-8 1.5,-13.5 z"
+         inkscape:connector-curvature="0"
+         style="fill:#ffff00;stroke:#000000;stroke-linecap:round;stroke-linejoin:bevel;stroke-dasharray:none" />
+      <svg:path
+         id="svg_7"
+         d="m 20,63.500015 0,9.000015 24,1.5 -0.5,-8.5 L 20,63.500015 z"
+         inkscape:connector-curvature="0"
+         style="fill:#ffff00;stroke:#000000;stroke-linecap:round;stroke-linejoin:bevel;stroke-dasharray:none" />
+      <svg:path
+         id="svg_8"
+         d="m 63.5,66.500031 0,9 24,1.5 -0.5,-8.5 -23.5,-2 z"
+         inkscape:connector-curvature="0"
+         style="fill:#ffff00;stroke:#000000;stroke-linecap:round;stroke-linejoin:bevel;stroke-dasharray:none" />
+      <svg:path
+         id="svg_9"
+         d="m 134.5,68.000031 0,9 23.5,-2.5 -0.5,-8.5 -23,2 z"
+         inkscape:connector-curvature="0"
+         style="fill:#ffff00;stroke:#000000;stroke-linecap:round;stroke-linejoin:bevel;stroke-dasharray:none" />
+      <svg:path
+         id="svg_10"
+         d="m 167.5,65.500031 0,9 23.5,-2.5 -0.5,-8.500015 -23,2.000015 z"
+         inkscape:connector-curvature="0"
+         style="fill:#ffff00;stroke:#000000;stroke-linecap:round;stroke-linejoin:bevel;stroke-dasharray:none" />
+      <svg:ellipse
+         ry="4.166667"
+         rx="1.75"
+         id="svg_11"
+         cy="66.000015"
+         cx="11.583331"
+         d="m 13.333331,66.000015 c 0,2.301187 -0.783502,4.166667 -1.75,4.166667 -0.966498,0 -1.7499999,-1.86548 -1.7499999,-4.166667 0,-2.301186 0.7835019,-4.166667 1.7499999,-4.166667 0.966498,0 1.75,1.865481 1.75,4.166667 z"
+         sodipodi:cx="11.583331"
+         sodipodi:cy="66.000015"
+         sodipodi:rx="1.75"
+         sodipodi:ry="4.166667"
+         style="fill:#ffff00;stroke:#000000;stroke-linecap:round;stroke-linejoin:bevel;stroke-dasharray:none" />
+      <svg:ellipse
+         id="svg_12"
+         ry="4.166667"
+         rx="1.75"
+         cy="69.666679"
+         cx="52.583328"
+         d="m 54.333328,69.666679 c 0,2.301187 -0.783501,4.166667 -1.75,4.166667 -0.966498,0 -1.75,-1.86548 -1.75,-4.166667 0,-2.301186 0.783502,-4.166667 1.75,-4.166667 0.966499,0 1.75,1.865481 1.75,4.166667 z"
+         sodipodi:cx="52.583328"
+         sodipodi:cy="69.666679"
+         sodipodi:rx="1.75"
+         sodipodi:ry="4.166667"
+         style="fill:#ffff00;stroke:#000000;stroke-linecap:round;stroke-linejoin:bevel;stroke-dasharray:none" />
+      <svg:ellipse
+         id="svg_13"
+         ry="4.166667"
+         rx="1.75"
+         cy="73.000015"
+         cx="97.583328"
+         d="m 99.333328,73.000015 c 0,2.301187 -0.783501,4.166667 -1.75,4.166667 -0.966498,0 -1.75,-1.86548 -1.75,-4.166667 0,-2.301186 0.783502,-4.166667 1.75,-4.166667 0.966499,0 1.75,1.865481 1.75,4.166667 z"
+         sodipodi:cx="97.583328"
+         sodipodi:cy="73.000015"
+         sodipodi:rx="1.75"
+         sodipodi:ry="4.166667"
+         style="fill:#ffff00;stroke:#000000;stroke-linecap:round;stroke-linejoin:bevel;stroke-dasharray:none" />
+      <svg:ellipse
+         id="svg_14"
+         ry="4.166667"
+         rx="1.75"
+         cy="73.000015"
+         cx="126.58333"
+         d="m 128.33333,73.000015 c 0,2.301187 -0.7835,4.166667 -1.75,4.166667 -0.9665,0 -1.75,-1.86548 -1.75,-4.166667 0,-2.301186 0.7835,-4.166667 1.75,-4.166667 0.9665,0 1.75,1.865481 1.75,4.166667 z"
+         sodipodi:cx="126.58333"
+         sodipodi:cy="73.000015"
+         sodipodi:rx="1.75"
+         sodipodi:ry="4.166667"
+         style="fill:#ffff00;stroke:#000000;stroke-linecap:round;stroke-linejoin:bevel;stroke-dasharray:none" />
+      <svg:ellipse
+         id="svg_15"
+         ry="4.166667"
+         rx="1.75"
+         cy="69.666679"
+         cx="163.25"
+         d="m 165,69.666679 c 0,2.301187 -0.7835,4.166667 -1.75,4.166667 -0.9665,0 -1.75,-1.86548 -1.75,-4.166667 0,-2.301186 0.7835,-4.166667 1.75,-4.166667 0.9665,0 1.75,1.865481 1.75,4.166667 z"
+         sodipodi:cx="163.25"
+         sodipodi:cy="69.666679"
+         sodipodi:rx="1.75"
+         sodipodi:ry="4.166667"
+         style="fill:#ffff00;stroke:#000000;stroke-linecap:round;stroke-linejoin:bevel;stroke-dasharray:none" />
+      <svg:ellipse
+         id="svg_17"
+         ry="4.166667"
+         rx="1.75"
+         cy="67.666679"
+         cx="196.25"
+         d="m 198,67.666679 c 0,2.301187 -0.7835,4.166667 -1.75,4.166667 -0.9665,0 -1.75,-1.86548 -1.75,-4.166667 0,-2.301186 0.7835,-4.166667 1.75,-4.166667 0.9665,0 1.75,1.865481 1.75,4.166667 z"
+         sodipodi:cx="196.25"
+         sodipodi:cy="67.666679"
+         sodipodi:rx="1.75"
+         sodipodi:ry="4.166667"
+         style="fill:#ffff00;stroke:#000000;stroke-linecap:round;stroke-linejoin:bevel;stroke-dasharray:none" />
+      <svg:path
+         id="svg_18"
+         d="m 108.33334,68.666687 0,11 10,0.666656 L 118,68.666687 l -9.66666,0 z"
+         inkscape:connector-curvature="0"
+         style="fill:#ffff00;stroke:#000000;stroke-linecap:round;stroke-linejoin:bevel;stroke-dasharray:none" />
+    </svg:g>
+    <svg:path
+       id="svg_6"
+       d="m 0.75,3 110.5,-3 92,4 -0.5,146.00003 -97.5,16 -104.5,-19.5 L 0.75,3 z"
+       inkscape:connector-curvature="0"
+       style="fill:none;stroke:#000000;stroke-width:5;stroke-linecap:round;stroke-linejoin:bevel;stroke-dasharray:none" />
+  </svg:g>
+</svg:svg>
