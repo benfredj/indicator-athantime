@@ -1375,18 +1375,18 @@ main (int argc, char **argv)
 	gtk_menu_shell_append(GTK_MENU_SHELL(indicator_menu), adhkar_item);
 	adhkar_subitems = gtk_menu_new();
 	gtk_menu_item_set_submenu (GTK_MENU_ITEM(adhkar_item), adhkar_subitems);
-	dhikr_item = gtk_menu_item_new_with_label("أظهر ذكرا");
-	gtk_menu_shell_append(GTK_MENU_SHELL(adhkar_subitems), dhikr_item);
-	g_signal_connect(dhikr_item, "activate", G_CALLBACK (cb_show_dhikr), NULL);
-	morningAthkar_item = gtk_menu_item_new_with_label("أذكار الصباح");
-	gtk_menu_shell_append(GTK_MENU_SHELL(adhkar_subitems), morningAthkar_item);
-	g_signal_connect(morningAthkar_item, "activate", G_CALLBACK (cb_show_morning_athkar), NULL);
-	eveningAthkar_item = gtk_menu_item_new_with_label("أذكار المساء");
-	gtk_menu_shell_append(GTK_MENU_SHELL(adhkar_subitems), eveningAthkar_item);
-	g_signal_connect(eveningAthkar_item, "activate", G_CALLBACK (cb_show_evening_athkar), NULL);
 	sleepingAthkar_item = gtk_menu_item_new_with_label("أذكار النوم");
 	gtk_menu_shell_append(GTK_MENU_SHELL(adhkar_subitems), sleepingAthkar_item);
 	g_signal_connect(sleepingAthkar_item, "activate", G_CALLBACK (cb_show_sleeping_athkar), NULL);
+	eveningAthkar_item = gtk_menu_item_new_with_label("أذكار المساء");
+	gtk_menu_shell_append(GTK_MENU_SHELL(adhkar_subitems), eveningAthkar_item);
+	g_signal_connect(eveningAthkar_item, "activate", G_CALLBACK (cb_show_evening_athkar), NULL);
+	morningAthkar_item = gtk_menu_item_new_with_label("أذكار الصباح");
+	gtk_menu_shell_append(GTK_MENU_SHELL(adhkar_subitems), morningAthkar_item);
+	g_signal_connect(morningAthkar_item, "activate", G_CALLBACK (cb_show_morning_athkar), NULL);
+	dhikr_item = gtk_menu_item_new_with_label("أظهر ذكرا");
+	gtk_menu_shell_append(GTK_MENU_SHELL(adhkar_subitems), dhikr_item);
+	g_signal_connect(dhikr_item, "activate", G_CALLBACK (cb_show_dhikr), NULL);
   
   //separator
   sep = gtk_separator_menu_item_new ();
