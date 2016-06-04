@@ -8,6 +8,7 @@
 #include <pwd.h>
 
 #include <gtk/gtk.h>
+#include <webkit/webkit.h>
 #include <libappindicator/app-indicator.h>
 #include <pango/pango.h>
 //#include <gio/gio.h>
@@ -61,17 +62,24 @@ gchar *names[] = {
 
 /* update period in seconds */
 int period = 59;
+int dhikrPeriod=1;
 gboolean first_run = TRUE;
 
 GSettings *settings;
 
 AppIndicator *indicator;
 GtkWidget *indicator_menu;
-GtkWidget *interfaces_menu;
+//GtkWidget *interfaces_menu;
 
 GtkWidget *athantimes_items[6];
 GtkWidget *stopathan_item;
 GtkWidget *hijri_item;
+GtkWidget *adhkar_subitems;
+GtkWidget *adhkar_item;
+GtkWidget *dhikr_item;
+GtkWidget *morningAthkar_item;
+GtkWidget *eveningAthkar_item;
+GtkWidget *sleepingAthkar_item;
 GtkWidget *quit_item;
 #define FILENAME ".athantime.conf"
 #define MAXBUF 1024
@@ -107,7 +115,17 @@ struct config
   int sleepingAthkarTime;
   int athkarPeriod;
   int specialAthkarDuration;
+  char* beforeTitleHtml;
+  char* afterTitleHtml;
+  char* afterAthkarHtml;
+  char* dhikrSeperator;
 };
+
+//char* beforeTitleHtml="<!DOCTYPE html><html><head><meta charset='utf-8' /></head><body style='direction: rtl;'><table style='width:100%'><tr><td style='width:35px'><img src='/usr/share/indicator-athantime/indicator-athantime2.png' /></td><td style='text-align:center;font-weight:bold;'>";
+//char* afterTitleHtml="</td></tr><tr><td colspan='2'>";
+//char* afterAthkarHtml="</td></tr></table></body></html>";
+//char* dhikrSeperator="<hr/>";
+gboolean show_dhikr (gpointer data);
 
 sDate hijridate;
 void
@@ -180,195 +198,185 @@ get_config (char *filename)
 
 	  if (i == 0)
 	    {
-	      memcpy (tempstr, cfline, strlen (cfline));
-	      configstruct.lat = atof (tempstr);
-	      //printf("%s",configstruct.imgserver);
+	      configstruct.lat = atof (cfline);
 	    }
 	  else if (i == 1)
 	    {
-	      memcpy (tempstr, cfline, strlen (cfline));
-	      configstruct.lon = atof (tempstr);
-	      //printf("%s",configstruct.ccserver);
+	      configstruct.lon = atof (cfline);
 	    }
 	  else if (i == 2)
 	    {
-	      memcpy (configstruct.city, cfline, strlen (cfline));
-	      configstruct.city[strlen (configstruct.city) - 1] = '\0';
-	      //printf("%s",configstruct.port);
+	      strncpy (configstruct.city, cfline, strlen (cfline)-1);
 	    }
 	  else if (i == 3)
 	    {
-	      memcpy (tempstr, cfline, strlen (cfline));
-	      configstruct.height = atof (tempstr);
-	      //printf("%s",configstruct.imagename);
+	      configstruct.height = atof (cfline);
 	    }
 	  else if (i == 4)
 	    {
-	      memcpy (tempstr, cfline, strlen (cfline));
-	      configstruct.correctiond = atoi (tempstr);
-	      //printf("%s",configstruct.getcmd);
+	      configstruct.correctiond = atoi (cfline);
 	    }
 	  else if (i == 5)
 	    {
-	      memcpy (tempstr, cfline, strlen (cfline));
-	      configstruct.method = atoi (tempstr);
-	      //printf("%s",configstruct.getcmd);
+	      configstruct.method = atoi (cfline);
 	    }
 	  else if (i == 6)
 	    {
-	      memcpy (configstruct.athan, cfline, strlen (cfline));
-	      configstruct.athan[strlen (configstruct.athan) - 1] = '\0';
+	      strncpy (configstruct.athan, cfline, strlen (cfline)-1);
 	    }
 	  else if (i == 7)
 	    {
-	      memcpy (configstruct.notificationfile, cfline, strlen (cfline));
-	      configstruct.
-		notificationfile[strlen (configstruct.notificationfile) - 1] =
-		'\0';
+	      strncpy (configstruct.notificationfile, cfline, strlen (cfline)-1);
 	    }
 	  else if (i == 8)
 	    {
-	      memcpy (tempstr, cfline, strlen (cfline));
-	      configstruct.beforeSobh = atoi (tempstr);
+	      configstruct.beforeSobh = atoi (cfline);
 	      if (configstruct.beforeSobh < 0
 		  || configstruct.beforeSobh > 1440 /* one day */ )
 		configstruct.beforeSobh = 0;
 	    }
 	  else if (i == 9)
 	    {
-	      memcpy (tempstr, cfline, strlen (cfline));
-	      configstruct.afterSobh = atoi (tempstr);
+	      configstruct.afterSobh = atoi (cfline);
 	      if (configstruct.afterSobh < 0
 		  || configstruct.afterSobh > 1440 /* one day */ )
 		configstruct.afterSobh = 0;
 	    }
 	  else if (i == 10)
 	    {
-	      memcpy (tempstr, cfline, strlen (cfline));
-	      configstruct.beforeDohr = atoi (tempstr);
+	      configstruct.beforeDohr = atoi (cfline);
 	      if (configstruct.beforeDohr < 0
 		  || configstruct.beforeDohr > 1440 /* one day */ )
 		configstruct.beforeDohr = 0;
 	    }
 	  else if (i == 11)
 	    {
-	      memcpy (tempstr, cfline, strlen (cfline));
-	      configstruct.afterDohr = atoi (tempstr);
+	      configstruct.afterDohr = atoi (cfline);
 	      if (configstruct.afterDohr < 0
 		  || configstruct.afterDohr > 1440 /* one day */ )
 		configstruct.afterDohr = 0;
 	    }
 	  else if (i == 12)
 	    {
-	      memcpy (tempstr, cfline, strlen (cfline));
-	      configstruct.beforeAsr = atoi (tempstr);
+	      configstruct.beforeAsr = atoi (cfline);
 	      if (configstruct.beforeAsr < 0
 		  || configstruct.beforeAsr > 1440 /* one day */ )
 		configstruct.beforeAsr = 0;
 	    }
 	  else if (i == 13)
 	    {
-	      memcpy (tempstr, cfline, strlen (cfline));
-	      configstruct.afterAsr = atoi (tempstr);
+	      configstruct.afterAsr = atoi (cfline);
 	      if (configstruct.afterAsr < 0
 		  || configstruct.afterAsr > 1440 /* one day */ )
 		configstruct.afterAsr = 0;
 	    }
 	  else if (i == 14)
 	    {
-	      memcpy (tempstr, cfline, strlen (cfline));
-	      configstruct.beforeMaghrib = atoi (tempstr);
+	      configstruct.beforeMaghrib = atoi (cfline);
 	      if (configstruct.beforeMaghrib < 0
 		  || configstruct.beforeMaghrib > 1440 /* one day */ )
 		configstruct.beforeMaghrib = 0;
 	    }
 	  else if (i == 15)
 	    {
-	      memcpy (tempstr, cfline, strlen (cfline));
-	      configstruct.afterMaghrib = atoi (tempstr);
+	      configstruct.afterMaghrib = atoi (cfline);
 	      if (configstruct.afterMaghrib < 0
 		  || configstruct.afterMaghrib > 1440 /* one day */ )
 		configstruct.afterMaghrib = 0;
 	    }
 	  else if (i == 16)
 	    {
-	      memcpy (tempstr, cfline, strlen (cfline));
-	      configstruct.beforeIsha = atoi (tempstr);
+	      configstruct.beforeIsha = atoi (cfline);
 	      if (configstruct.beforeIsha < 0
 		  || configstruct.beforeIsha > 1440 /* one day */ )
 		configstruct.beforeIsha = 0;
 	    }
 	  else if (i == 17)
 	    {
-	      memcpy (tempstr, cfline, strlen (cfline));
-	      configstruct.afterIsha = atoi (tempstr);
+	      configstruct.afterIsha = atoi (cfline);
 	      if (configstruct.afterIsha < 0
 		  || configstruct.afterIsha > 1440 /* one day */ )
 		configstruct.afterIsha = 0;
 	    }
 	  else if (i == 18)
 	    {
-	      memcpy (tempstr, cfline, strlen (cfline));
-	      configstruct.morningAthkar = atoi (tempstr);
+	      configstruct.morningAthkar = atoi (cfline);
 	      if (configstruct.morningAthkar < 0
 		  || configstruct.morningAthkar > 1)
 		configstruct.morningAthkar = 0;
 	    }
 	  else if (i == 19)
 	    {
-	      memcpy (tempstr, cfline, strlen (cfline));
-	      configstruct.morningAthkarTime = atoi (tempstr);
+	      configstruct.morningAthkarTime = atoi (cfline);
 	      if (configstruct.morningAthkarTime < 0
 		  || configstruct.morningAthkarTime > 300)
 		configstruct.morningAthkarTime = 0;
 	    }
 	  else if (i == 20)
 	    {
-	      memcpy (tempstr, cfline, strlen (cfline));
-	      configstruct.eveningAthkar = atoi (tempstr);
+	      configstruct.eveningAthkar = atoi (cfline);
 	      if (configstruct.eveningAthkar < 0
 		  || configstruct.eveningAthkar > 1)
 		configstruct.eveningAthkar = 0;
 	    }
 	  else if (i == 21)
 	    {
-	      memcpy (tempstr, cfline, strlen (cfline));
-	      configstruct.eveningAthkarTime = atoi (tempstr);
+	      configstruct.eveningAthkarTime = atoi (cfline);
 	      if (configstruct.eveningAthkarTime < 0
 		  || configstruct.eveningAthkarTime > 300)
 		configstruct.eveningAthkarTime = 0;
 	    }
 	  else if (i == 22)
 	    {
-	      memcpy (tempstr, cfline, strlen (cfline));
-	      configstruct.sleepingAthkar = atoi (tempstr);
+	      configstruct.sleepingAthkar = atoi (cfline);
 	      if (configstruct.sleepingAthkar < 0
 		  || configstruct.sleepingAthkar > 1)
 		configstruct.sleepingAthkar = 0;
 	    }
 	  else if (i == 23)
 	    {
-	      memcpy (tempstr, cfline, strlen (cfline));
-	      configstruct.sleepingAthkarTime = atoi (tempstr);
+	      configstruct.sleepingAthkarTime = atoi (cfline);
 	      if (configstruct.sleepingAthkarTime < 0
 		  || configstruct.sleepingAthkarTime > 500)
 		configstruct.sleepingAthkarTime = 0;
 	    }
 	  else if (i == 24)
 	    {
-	      memcpy (tempstr, cfline, strlen (cfline));
-	      configstruct.athkarPeriod = atoi (tempstr);
+	      configstruct.athkarPeriod = atoi (cfline);
 	      if (configstruct.athkarPeriod < 0
 		  || configstruct.athkarPeriod > 500)
 		configstruct.athkarPeriod = 0;
 	    }
 	  else if (i == 25)
 	    {
-	      memcpy (tempstr, cfline, strlen (cfline));
-	      configstruct.specialAthkarDuration = atoi (tempstr);
+	      configstruct.specialAthkarDuration = atoi (cfline);
 	      if (configstruct.specialAthkarDuration < 0
 		  || configstruct.specialAthkarDuration > 120)
 		configstruct.specialAthkarDuration = 0;
+	    }
+	  else if (i == 26)
+	    {
+			//configstruct.beforeTitleHtml = g_malloc (sizeof (gchar) * strlen (cfline));
+			configstruct.beforeTitleHtml = calloc (sizeof (char), strlen (cfline));
+	      strncpy (configstruct.beforeTitleHtml, cfline, strlen (cfline)-1);
+	    }
+	  else if (i == 27)
+	    {
+			//configstruct.afterTitleHtml = g_malloc (sizeof (gchar) * strlen (cfline));
+			configstruct.afterTitleHtml = calloc (sizeof (char), strlen (cfline));
+	      strncpy (configstruct.afterTitleHtml, cfline, strlen (cfline)-1);
+	    }
+	  else if (i == 28)
+	    {
+			//configstruct.afterAthkarHtml = g_malloc (sizeof (gchar) * strlen (cfline));
+			configstruct.afterAthkarHtml = calloc (sizeof (char), strlen (cfline));
+	      strncpy (configstruct.afterAthkarHtml, cfline, strlen (cfline)-1);
+	    }
+	  else if (i == 29)
+	    {
+			//configstruct.dhikrSeperator = g_malloc (sizeof (gchar) * strlen (cfline));
+			configstruct.dhikrSeperator = calloc (sizeof (char), strlen (cfline));
+	      strncpy (configstruct.dhikrSeperator, cfline, strlen (cfline)-1);
 	    }
 	  i++;
 	}			// End while
@@ -547,16 +555,16 @@ next_prayer (void)
   for (i = 0; i < 6; i++)
     {
       if (i == 1)
-	{
-	  continue;
-	}			/* skip shorouk */
+		{
+		  continue;
+		}			/* skip shorouk */
       next_prayer_id = i;
       if (ptList[i].hour > curtime->tm_hour ||
 	  (ptList[i].hour == curtime->tm_hour &&
 	   ptList[i].minute >= curtime->tm_min))
-	{
-	  return;
-	}
+		{
+		  return;
+		}
     }
 
   next_prayer_id = 0;
@@ -565,9 +573,7 @@ next_prayer (void)
 void
 set_opac (GtkWidget * widget, gpointer data)
 {
-
-  //GdkColor col = {0, 27000, 30000, 35000};   
-  GdkRGBA col = { 255, 255, 255 };
+  //GdkRGBA col = { 255, 255, 255 };
   //gtk_widget_override_background_color(widget, GTK_STATE_PRELIGHT, &col);
   gtk_widget_set_opacity (widget, 0.5);
 }
@@ -575,19 +581,12 @@ set_opac (GtkWidget * widget, gpointer data)
 void
 reset_opac (GtkWidget * widget, gpointer data)
 {
-
-  //GdkColor col = {0, 27000, 30000, 35000};   
-  GdkRGBA col = { 255, 255, 255 };
+  //GdkRGBA col = { 255, 255, 255 };
   //gtk_widget_override_background_color(widget, GTK_STATE_PRELIGHT, &col);
   gtk_widget_set_opacity (widget, 1);
 }
 
-static GtkWidget *dhikrWindow = NULL;
-GtkWidget *label = NULL;
-//GtkWidget *frame = NULL;
-GtkWidget *sw = NULL;
-GtkWidget *contents = NULL;
-GtkTextBuffer *buffer = NULL;
+
 
 
 /*
@@ -613,18 +612,25 @@ static int show_dhikr_callback(void *data, int argc, char **argv, char **azColNa
    return 0;
 }
 */
+GtkWidget *dhikrWindow = NULL;
+//GtkWidget *label = NULL;
+//GtkWidget *frame = NULL;
+GtkWidget *sw = NULL; //scrolledwindow
+//GtkWidget *contents = NULL;
+//GtkTextBuffer *buffer = NULL;
+GtkWidget *webView = NULL;
 
 void
 initAthkarWindow (int heightWindow)
 {
-  GdkGeometry geometry;
-  GdkWindowHints geometry_mask;
+  //GdkGeometry geometry;
+  //GdkWindowHints geometry_mask;
 
   if (!dhikrWindow)
     {
       dhikrWindow = gtk_window_new (GTK_WINDOW_TOPLEVEL);
-
-      gtk_window_set_resizable (GTK_WINDOW (dhikrWindow), FALSE);
+		gtk_window_set_title (GTK_WINDOW (dhikrWindow), "برنامج أوقات الأذان: أذكار");
+      //gtk_window_set_resizable (GTK_WINDOW (dhikrWindow), FALSE);
 
       gtk_window_set_keep_above (GTK_WINDOW (dhikrWindow), TRUE);
       gtk_window_set_type_hint (GTK_WINDOW (dhikrWindow),
@@ -637,76 +643,70 @@ initAthkarWindow (int heightWindow)
 				      GTK_POLICY_AUTOMATIC,
 				      GTK_POLICY_AUTOMATIC);
 
-      gtk_scrolled_window_set_shadow_type (GTK_SCROLLED_WINDOW (sw),
-					   GTK_SHADOW_IN);
-      gtk_container_add (GTK_CONTAINER (dhikrWindow), sw);
-      contents = gtk_text_view_new ();
-      gtk_text_view_set_wrap_mode (GTK_TEXT_VIEW (contents), GTK_WRAP_WORD);
-      gtk_text_view_set_overwrite (GTK_TEXT_VIEW (contents), FALSE);
-      gtk_text_view_set_editable (GTK_TEXT_VIEW (contents), FALSE);
+      //gtk_scrolled_window_set_shadow_type (GTK_SCROLLED_WINDOW (sw), GTK_SHADOW_IN);
+     
+      
+      //contents = gtk_text_view_new ();
+      //gtk_text_view_set_wrap_mode (GTK_TEXT_VIEW (contents), GTK_WRAP_WORD);
+      //gtk_text_view_set_overwrite (GTK_TEXT_VIEW (contents), FALSE);
+      //gtk_text_view_set_editable (GTK_TEXT_VIEW (contents), FALSE);
       //gtk_widget_grab_focus (contents);
+      //gtk_container_add (GTK_CONTAINER (sw), contents);
+		
+		webView = webkit_web_view_new();
+		//g_object_ref(G_OBJECT(webView));
+		//g_object_ref_sink(G_OBJECT (webView));
+		//g_assert_cmpint(G_OBJECT(webView)->ref_count, ==, 1);
+    // This crashed with the original version
+    //g_object_unref(webView);
+    
+      webkit_web_view_set_editable (WEBKIT_WEB_VIEW(webView), FALSE);
+      gtk_container_add(GTK_CONTAINER(sw), GTK_WIDGET(webView));
+       gtk_container_add (GTK_CONTAINER (dhikrWindow), sw);
 
-      gtk_container_add (GTK_CONTAINER (sw), contents);
-
-
-      g_signal_connect (dhikrWindow, "destroy",
-			G_CALLBACK (gtk_widget_destroyed), &dhikrWindow);
-      g_signal_connect (G_OBJECT (dhikrWindow), "enter-notify-event",
-			G_CALLBACK (set_opac), NULL);
-      //g_signal_connect(G_OBJECT(contents), "enter-notify-event", G_CALLBACK(set_opac), NULL);
-      g_signal_connect (G_OBJECT (dhikrWindow), "leave-notify-event",
-			G_CALLBACK (reset_opac), NULL);
-      //g_signal_connect(G_OBJECT(contents), "leave-notify-event", G_CALLBACK(reset_opac), NULL);
+      g_signal_connect (G_OBJECT (dhikrWindow), "destroy", G_CALLBACK (gtk_widget_destroyed), &dhikrWindow);
+      g_signal_connect (G_OBJECT (dhikrWindow), "enter-notify-event", G_CALLBACK (set_opac), NULL);
+      g_signal_connect (G_OBJECT (dhikrWindow), "leave-notify-event", G_CALLBACK (reset_opac), NULL);
       gtk_container_set_border_width (GTK_CONTAINER (dhikrWindow), 8);
 
     }
-  gtk_window_set_default_size (GTK_WINDOW (dhikrWindow), 100, heightWindow);
-  geometry_mask = GDK_HINT_MIN_SIZE | GDK_HINT_BASE_SIZE | GDK_HINT_MAX_SIZE;
+  gtk_window_set_default_size (GTK_WINDOW (dhikrWindow), 300, heightWindow);
+  //g_assert_cmpint(G_OBJECT(webView)->ref_count, ==, 1);
+  //geometry_mask = GDK_HINT_MIN_SIZE | GDK_HINT_BASE_SIZE | GDK_HINT_MAX_SIZE;
 
-  geometry.min_width = 300;
-  geometry.min_height = heightWindow;
-  geometry.max_width = 300;
-  geometry.max_height = heightWindow;
-  geometry.base_width = 0;
-  geometry.base_height = 0;
-  geometry.win_gravity = GDK_GRAVITY_SOUTH_EAST;
+  //geometry.min_width = 300;
+  //geometry.min_height = heightWindow;
+  //geometry.max_width = 300;
+  //geometry.max_height = heightWindow;
+  //geometry.base_width = 0;
+  //geometry.base_height = 0;
+  //geometry.win_gravity = GDK_GRAVITY_SOUTH_EAST;
 
-  gtk_window_set_geometry_hints (GTK_WINDOW (dhikrWindow),
-				 NULL, &geometry, geometry_mask);
+  //gtk_window_set_geometry_hints (GTK_WINDOW (dhikrWindow),
+	//			 NULL, &geometry, geometry_mask);
 
 
   /* Obtaining the buffer associated with the widget. */
-  buffer = gtk_text_view_get_buffer (GTK_TEXT_VIEW (contents));
+  //buffer = gtk_text_view_get_buffer (GTK_TEXT_VIEW (contents));
 }
-
+/*
 static int
-show_athkar_window (const char *title, const char *nass, int count)
+show_athkar_window (const char *title, const char *nass)
 {
   //TRACE("show_athkar_window(%s, %s, %d)\n", title, nass, count);
-  TRACE ("show_athkar_window(s, s, %d)\n", count);
+  TRACE ("show_athkar_window(s, s)\n");
   GdkGeometry geometry;
   GdkWindowHints geometry_mask;
   char *sepString;
 
   initAthkarWindow (200);
 
-  gtk_window_set_title (GTK_WINDOW (dhikrWindow), title);
-  GtkTextIter iter;
+  //gtk_window_set_title (GTK_WINDOW (dhikrWindow), title);
+  gtk_window_set_title (GTK_WINDOW (dhikrWindow), "برنامج أوقات الأذان: أذكار");
 
-
-  if (!count)
-    {
-      gtk_text_buffer_set_text (buffer, nass, -1);
-    }
-  else
-    {
-      sepString = "\n\n+++\n\n";
-      gtk_text_buffer_get_end_iter (buffer, &iter);
-      gtk_text_buffer_insert (buffer, &iter, sepString, -1);
-      gtk_text_buffer_get_end_iter (buffer, &iter);
-
-      gtk_text_buffer_insert (buffer, &iter, nass, -1);
-    }
+	webkit_web_view_load_string(webView, nass, "text/html", "utf-8", "file://");
+  free(nass);
+    
 
   if (!gtk_widget_get_visible (dhikrWindow))
     {
@@ -714,30 +714,42 @@ show_athkar_window (const char *title, const char *nass, int count)
     }
   return 0;
 }
-
+*/
+/*
 static int
 show_dhikr_callback (void *data, int argc, char **argv, char **azColName)
 {
-
-  GdkGeometry geometry;
-  GdkWindowHints geometry_mask;
   char *title = argv[0];
   char *nass = argv[1];
-
-
-  size_t lenNass = strlen (nass);
-  int heightWindow = 100;
+  char *html = NULL;
+  size_t htmlSize = 10;
+  TRACE ("show_dhikr_callback: processing\n");
+	size_t lenNass = strlen (nass);
+	htmlSize += strlen(configstruct.beforeTitleHtml)+strlen(configstruct.afterTitleHtml)+strlen(configstruct.dhikrSeperator)+strlen(configstruct.afterAthkarHtml)+strlen(title)+lenNass;
+	TRACE ("show_dhikr_callback: size nass:%d\n", (int)lenNass);
+	//html = malloc(htmlSize);
+	html = g_malloc (sizeof (gchar) * htmlSize);
+	//TRACE ("show_dhikr_callback: size nass:%d\n", (int)lenNass);
+	
+	sprintf(html, "%s%s%s%s%s%s",configstruct.beforeTitleHtml, title, configstruct.afterTitleHtml, configstruct.dhikrSeperator, nass, configstruct.afterAthkarHtml);
+  //TRACE ("show_dhikr_callback: size nass:%d\n", (int)lenNass);
+  
+  int heightWindow = 150;
   if (lenNass < 400)
-    heightWindow = 100;
+    heightWindow = 150;
   //else if(lenNass<400) heightWindow  = 200;
   else
     heightWindow = 200;
 
   initAthkarWindow (heightWindow);
 
-  gtk_window_set_title (GTK_WINDOW (dhikrWindow), title);
-
-  gtk_text_buffer_set_text (buffer, nass, -1);
+  //gtk_window_set_title (GTK_WINDOW (dhikrWindow), title);
+	gtk_window_set_title (GTK_WINDOW (dhikrWindow), "برنامج أوقات الأذان: أذكار");
+  //gtk_text_buffer_set_text (buffer, nass, -1);
+  //TRACE("HTML dhikr: %s\n",html);
+  webkit_web_view_load_string(webView, html, "text/html", "utf-8", "file://");
+  free(html);
+  
 
   if (!gtk_widget_get_visible (dhikrWindow))
     {
@@ -746,19 +758,23 @@ show_dhikr_callback (void *data, int argc, char **argv, char **azColName)
   TRACE ("Dhikr shown successfully\n");
   return 0;
 }
-
+*/
 static void
 show_athkar (int AthkarType)
 {
 
-  char *zErrMsg = 0;
-  int rc;
+  //char *zErrMsg = 0;
+  //int rc;
   char *sql = NULL;
+  char *html = NULL;
   const char *title = NULL;
   const char *nass = NULL;
   sqlite3_stmt *stmt;
   int row = 0;
-
+	size_t htmlSize=10;
+	
+	htmlSize+=strlen(configstruct.beforeTitleHtml)+strlen(configstruct.afterTitleHtml)+strlen(configstruct.dhikrSeperator)+strlen(configstruct.afterAthkarHtml);
+	
   switch (AthkarType)
     {
     case MORNING:
@@ -780,39 +796,92 @@ show_athkar (int AthkarType)
 
 
   sqlite3_prepare_v2 (dhikrdb, sql, strlen (sql) + 1, &stmt, NULL);
-
+	
   while (1)
     {
       int s;
 
       s = sqlite3_step (stmt);
       if (s == SQLITE_ROW)
-	{
-	  //int bytes;
-	  //const unsigned char * text;
-	  //bytes = sqlite3_column_bytes(stmt, 0);
-	  title = sqlite3_column_text (stmt, 0);
-	  nass = sqlite3_column_text (stmt, 1);
-	  //printf ("%d: %s\n", row, text);
-
-	  show_athkar_window (title, nass, row);
-
-	  row++;
-	  TRACE ("Special Athkar shown: %d\n", row);
-	}
+		{
+		 
+		  nass = (const char *)sqlite3_column_text (stmt, 1);
+		  //printf ("%d: %s\n", row, text);
+			if(row == 0){
+				 title = (const char *)sqlite3_column_text (stmt, 0);
+				htmlSize += strlen(title);
+			}
+			htmlSize += strlen(nass)+strlen(configstruct.dhikrSeperator);
+		  row++;
+		 // TRACE ("Special Athkar shown: %d\n", row);
+		}
       else if (s == SQLITE_DONE)
-	{
-	  TRACE ("Show athkar done.\n");
-	  break;
-	}
-      else
-	{
-	  TRACE ("Show athkar Failed.\n");
-	  return;
-	}
+		{
+		  TRACE ("selection of athkar done.\n");
+		  break;
+		}
+		  else
+		{
+		  TRACE ("Show athkar Failed.\n");
+		  return;
+		}
     }
+    //html = malloc(htmlSize);
+    html = calloc(sizeof (gchar), htmlSize);
+    //html = g_malloc (sizeof (gchar) * htmlSize);
   sqlite3_reset (stmt);
+  row = 0;
+  while (1)
+    {
+      int s;
 
+      s = sqlite3_step (stmt);
+      if (s == SQLITE_ROW)
+		{
+		  //title = sqlite3_column_text (stmt, 0);
+		 
+		  //printf ("%d: %s\n", row, text);
+			if(row == 0){
+				 title = (const char *)sqlite3_column_text (stmt, 0);
+				 html[0] = '\0';
+				 strcat(html, configstruct.beforeTitleHtml);
+				 strcat(html, title);
+				 strcat(html, configstruct.afterTitleHtml);
+			}
+			 nass = (const char *)sqlite3_column_text (stmt, 1);
+			strcat(html, configstruct.dhikrSeperator);
+			strcat(html, nass);
+		  row++;
+		  TRACE ("Special Athkar shown: %d\n", row);
+		}
+      else if (s == SQLITE_DONE)
+		{
+		  TRACE ("selection of athkar done.\n");
+		  break;
+		}
+		  else
+		{
+		  TRACE ("Show athkar Failed.\n");
+		  return;
+		}
+    }
+    strcat(html, configstruct.afterAthkarHtml);
+
+  initAthkarWindow (250);
+
+  //gtk_window_set_title (GTK_WINDOW (dhikrWindow), title);
+  //gtk_window_set_title (GTK_WINDOW (dhikrWindow), "برنامج أوقات الأذان: أذكار");
+
+	webkit_web_view_load_string(WEBKIT_WEB_VIEW(webView), html, "text/html", "utf-8", "file://");
+	free(html);
+    html = NULL;
+
+  if (!gtk_widget_get_visible (dhikrWindow))
+    {
+      gtk_widget_show_all (dhikrWindow);
+    }
+    TRACE ("Show athkar done.\n");
+	return;
 }
 
 // Taken and modified from minbar
@@ -866,7 +935,14 @@ update_remaining (void)
     prev_prayer_id = next_prayer_id - 1;
   int prev_minutes =
     ptList[prev_prayer_id].minute + ptList[prev_prayer_id].hour * 60;
-  difference_prev_prayer = cur_minutes - prev_minutes;
+  
+  if (ptList[prev_prayer_id].hour > curtime->tm_hour)
+    {
+      /* salat is on prev day (subh, and even Isha sometimes) before midnight */
+      cur_minutes += 60 * 24;
+    }
+    difference_prev_prayer = cur_minutes - prev_minutes;
+    
   TRACE ("next hour: %d, cur hour: %d, diff:%d\n",
 	 ptList[prev_prayer_id].hour, curtime->tm_hour,
 	 difference_prev_prayer);
@@ -910,6 +986,7 @@ update_remaining (void)
 				       label_guide);
 	    }
 	  waitSpecialAthkar = 0;
+	  
 	  break;
 	case 3:		//asr
 	  if (difference_prev_prayer == configstruct.afterAsr)
@@ -941,10 +1018,16 @@ update_remaining (void)
 	      app_indicator_set_label (indicator, next_prayer_string,
 				       label_guide);
 	    }
-	  waitSpecialAthkar = 0;
+	  //waitSpecialAthkar = 0;
+	  if (configstruct.sleepingAthkar == 1
+	      && difference_prev_prayer == configstruct.sleepingAthkarTime)
+	    {
+	      waitSpecialAthkar = configstruct.sleepingAthkarTime;
+	      show_athkar (SLEEPING);
+	    }
 	  break;
 	case 5:		//isha
-	  TRACE ("notify after isha?\n");
+	  //TRACE ("notify after isha?\n");
 	  if (difference_prev_prayer == configstruct.afterIsha)
 	    play_soundfile (configstruct.notificationfile);
 	  else if (difference_prev_prayer < configstruct.afterIsha)
@@ -1013,38 +1096,97 @@ update_data (gpointer data)
 	   hijridate.month, hijridate.day);
   g_object_set (hijri_item, "label", currenthijridate, NULL);
 
+	show_dhikr (NULL);
   return TRUE;
+}
+
+void show_random_dhikr(){
+	char sql[MAXBUF];
+  const char *title;
+  const char *nass;
+  char *html = NULL;
+  size_t lenNass = 0, htmlSize=10;
+	int heightWindow = 150;
+	sqlite3_stmt *stmt;
+	
+	
+    htmlSize += strlen(configstruct.beforeTitleHtml)+strlen(configstruct.afterTitleHtml)+strlen(configstruct.dhikrSeperator)+strlen(configstruct.afterAthkarHtml);
+    
+  sprintf (sql, "SELECT title,nass from athkar WHERE id=%d",rand () % nbAthkar);
+
+	sqlite3_prepare_v2 (dhikrdb, sql, strlen (sql) + 1, &stmt, NULL);
+	while (1)
+    {
+      int s;
+
+      s = sqlite3_step (stmt);
+      if (s == SQLITE_ROW)
+		{
+		 
+			nass = (const char *)sqlite3_column_text (stmt, 1);
+			title = (const char *)sqlite3_column_text (stmt, 0);
+			lenNass = strlen (nass);
+			htmlSize += strlen(title)+lenNass;
+			
+			break;
+		}
+      else if (s == SQLITE_DONE)
+		{
+		  TRACE ("show_random_dhikr done.\n");
+		  break;
+		}
+		  else
+		{
+		  TRACE ("show_random_dhikr Failed.\n");
+		  return;
+		}
+    }
+	TRACE ("show_random_dhikr: size nass:%d\n", (int)lenNass);
+	
+	html = g_malloc (sizeof (gchar) * htmlSize);
+	
+	sprintf(html, "%s%s%s%s%s%s",configstruct.beforeTitleHtml, title, configstruct.afterTitleHtml, configstruct.dhikrSeperator, nass, configstruct.afterAthkarHtml);
+  
+  
+  if (lenNass < 400)
+    heightWindow = 200;
+  else
+    heightWindow = 250;
+
+  initAthkarWindow (heightWindow);
+
+  webkit_web_view_load_string(WEBKIT_WEB_VIEW(webView), html, "text/html", "utf-8", "file://");
+  free(html);
+  
+
+  if (!gtk_widget_get_visible (dhikrWindow))
+    {
+      gtk_widget_show_all (dhikrWindow);
+    }
+  TRACE ("Dhikr shown successfully\n");
 }
 
 gboolean
 show_dhikr (gpointer data)
 {
-  char *zErrMsg = 0;
-  int rc;
-  char sql[MAXBUF];
-
+	TRACE ("show_dhikr: entering\n");
+	
+	if(dhikrPeriod<configstruct.athkarPeriod){
+		dhikrPeriod++;
+		return 0;
+	}else
+		dhikrPeriod=1;
+		
 	if (difference_prev_prayer>0 && difference_prev_prayer <
       (waitSpecialAthkar + configstruct.specialAthkarDuration)
       && waitSpecialAthkar > 0)
     {
-      TRACE ("show_dhikr_callback: skipped\n");
+      TRACE ("show_dhikr: skipped\n");
       return 0;
     }
+    TRACE ("show_dhikr: processing\n");
     
-  //sprintf(sql,"SELECT title,nass from athkar WHERE id=%d AND title!='أذكار الصباح' AND title!='أذكار المساء' AND title!='أذكار النوم' LIMIT 1", rand()%nbAthkar);
-  sprintf (sql, "SELECT title,nass from athkar WHERE id=%d",
-	   rand () % nbAthkar);
-
-  /* Execute SQL statement */
-  rc =
-    sqlite3_exec (dhikrdb, sql, show_dhikr_callback, (void *) data, &zErrMsg);
-  if (rc != SQLITE_OK)
-    {
-      TRACE ("SQL error: %s\n", zErrMsg);
-      sqlite3_free (zErrMsg);
-    }				/*else{
-				   TRACE("Dhikr selected successfully\n");
-				   } */
+    show_random_dhikr();
 
   return TRUE;
 }
@@ -1101,13 +1243,32 @@ initializeAthkarDatabase ()
     }
 }
 
-
+void cb_show_dhikr(GtkMenuItem *menu_item, gpointer user_data){
+	TRACE ("cb_show_dhikr: entering\n");
+	dhikrPeriod = 1;
+	show_random_dhikr();
+}
+void cb_show_sleeping_athkar(GtkMenuItem *menu_item, gpointer user_data){
+	TRACE ("cb_show_sleeping_athkar: entering\n");
+	dhikrPeriod = 1;
+	show_athkar(SLEEPING);
+}
+void cb_show_evening_athkar(GtkMenuItem *menu_item, gpointer user_data){
+	TRACE ("cb_show_evening_athkar: entering\n");
+	dhikrPeriod = 1;
+	show_athkar(EVENING);
+}
+void cb_show_morning_athkar(GtkMenuItem *menu_item, gpointer user_data){
+	TRACE ("cb_show_morning_athkar: entering\n");
+	dhikrPeriod = 1;
+	show_athkar(MORNING);
+}
 
 int
 main (int argc, char **argv)
 {
   int i;
-  int rc;
+  //int rc;
   if (argc > 1 && strcmp ("--trace", argv[1]) == 0)
     {
       trace = true;
@@ -1165,6 +1326,10 @@ main (int argc, char **argv)
   TRACE ("sleeping athkar time after isha: %d\n",
 	 configstruct.sleepingAthkarTime);
   TRACE ("Athkar period: %d\n", configstruct.athkarPeriod);
+  TRACE ("beforeTitleHtml: %s\n", configstruct.beforeTitleHtml);
+  TRACE ("afterTitleHtml: %s\n", configstruct.afterTitleHtml);
+  TRACE ("afterAthkarHtml: %s\n", configstruct.afterAthkarHtml);
+  TRACE ("dhikrSeperator: %s\n", configstruct.dhikrSeperator);
 
   FILE *file = fopen (configstruct.athan, "r");
   if (file == NULL)
@@ -1205,7 +1370,28 @@ main (int argc, char **argv)
   //separator
   GtkWidget *sep = gtk_separator_menu_item_new ();
   gtk_menu_shell_append (GTK_MENU_SHELL (indicator_menu), sep);
-
+  
+	adhkar_item = gtk_menu_item_new_with_label("الأذكار");
+	gtk_menu_shell_append(GTK_MENU_SHELL(indicator_menu), adhkar_item);
+	adhkar_subitems = gtk_menu_new();
+	gtk_menu_item_set_submenu (GTK_MENU_ITEM(adhkar_item), adhkar_subitems);
+	dhikr_item = gtk_menu_item_new_with_label("أظهر ذكرا");
+	gtk_menu_shell_append(GTK_MENU_SHELL(adhkar_subitems), dhikr_item);
+	g_signal_connect(dhikr_item, "activate", G_CALLBACK (cb_show_dhikr), NULL);
+	morningAthkar_item = gtk_menu_item_new_with_label("أذكار الصباح");
+	gtk_menu_shell_append(GTK_MENU_SHELL(adhkar_subitems), morningAthkar_item);
+	g_signal_connect(morningAthkar_item, "activate", G_CALLBACK (cb_show_morning_athkar), NULL);
+	eveningAthkar_item = gtk_menu_item_new_with_label("أذكار المساء");
+	gtk_menu_shell_append(GTK_MENU_SHELL(adhkar_subitems), eveningAthkar_item);
+	g_signal_connect(eveningAthkar_item, "activate", G_CALLBACK (cb_show_evening_athkar), NULL);
+	sleepingAthkar_item = gtk_menu_item_new_with_label("أذكار النوم");
+	gtk_menu_shell_append(GTK_MENU_SHELL(adhkar_subitems), sleepingAthkar_item);
+	g_signal_connect(sleepingAthkar_item, "activate", G_CALLBACK (cb_show_sleeping_athkar), NULL);
+  
+  //separator
+  sep = gtk_separator_menu_item_new ();
+  gtk_menu_shell_append (GTK_MENU_SHELL (indicator_menu), sep);
+  
   for (i = 0; i < 6; i++)
     {
       athantimes_items[i] = gtk_menu_item_new_with_label ("");
@@ -1276,8 +1462,9 @@ main (int argc, char **argv)
   // update period in milliseconds
   g_timeout_add (1000 * period, update_data, NULL);
 
-  if (configstruct.athkarPeriod > 0)
-    g_timeout_add (1000 * 60 * configstruct.athkarPeriod, show_dhikr, NULL);
+  //if (configstruct.athkarPeriod > 0)
+    //g_timeout_add (1000 * 60 * configstruct.athkarPeriod, show_dhikr, NULL);
+    //show_dhikr (NULL);
 
   gtk_main ();
 
