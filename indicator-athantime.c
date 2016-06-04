@@ -620,6 +620,14 @@ GtkWidget *sw = NULL; //scrolledwindow
 //GtkTextBuffer *buffer = NULL;
 GtkWidget *webView = NULL;
 
+gboolean
+reset_contextmenu (WebKitWebView       *web_view,
+               GtkWidget           *default_menu,
+               WebKitHitTestResult *hit_test_result,
+               gboolean             triggered_with_keyboard,
+               gpointer             user_data){
+				   return TRUE;
+			   }
 void
 initAthkarWindow (int heightWindow)
 {
@@ -667,6 +675,7 @@ initAthkarWindow (int heightWindow)
       g_signal_connect (G_OBJECT (dhikrWindow), "destroy", G_CALLBACK (gtk_widget_destroyed), &dhikrWindow);
       g_signal_connect (G_OBJECT (dhikrWindow), "enter-notify-event", G_CALLBACK (set_opac), NULL);
       g_signal_connect (G_OBJECT (dhikrWindow), "leave-notify-event", G_CALLBACK (reset_opac), NULL);
+      g_signal_connect (G_OBJECT (webView), "context-menu", G_CALLBACK (reset_contextmenu), NULL);
       gtk_container_set_border_width (GTK_CONTAINER (dhikrWindow), 8);
 
     }
@@ -1387,7 +1396,7 @@ main (int argc, char **argv)
 	dhikr_item = gtk_menu_item_new_with_label("أظهر ذكرا");
 	gtk_menu_shell_append(GTK_MENU_SHELL(adhkar_subitems), dhikr_item);
 	g_signal_connect(dhikr_item, "activate", G_CALLBACK (cb_show_dhikr), NULL);
-  
+
   //separator
   sep = gtk_separator_menu_item_new ();
   gtk_menu_shell_append (GTK_MENU_SHELL (indicator_menu), sep);
