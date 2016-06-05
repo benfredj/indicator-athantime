@@ -636,13 +636,17 @@ calendar_day_selected (GtkWidget * widget)
   char hiriDate[256];
   char salatTimes[256];
   guint day, month, year;
-  sDate mydate;
+  sDate UmAlQuraDate;
+  sDate cHijriDate;
   Date *prayerDate1 = NULL;
   Prayer ptList1[6];
 
   gtk_calendar_get_date (GTK_CALENDAR (calendar), &year, &month, &day);
-  G2H (&mydate, day, month, year);
-  sprintf (hiriDate, "%d/%d/%d\n", mydate.day, mydate.month, mydate.year);
+  G2H (&UmAlQuraDate, day, month, year);
+  h_date(&cHijriDate, day, month, year);
+  sprintf (hiriDate, "أم القرى: %d/%d/%d\n هجري: %d/%d/%d", 
+	UmAlQuraDate.day, UmAlQuraDate.month, UmAlQuraDate.year, 
+	cHijriDate.day, cHijriDate.month, cHijriDate.year);
   gtk_label_set_text (GTK_LABEL (HijriDateLabelValue), hiriDate);
 
 
