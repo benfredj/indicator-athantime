@@ -30,6 +30,10 @@
 #define MORNING 0
 #define EVENING 1
 #define SLEEPING 2
+Method *calcMethod;
+
+Location *loc;
+
 struct config configstruct;
 bool trace = false;
 Prayer ptList[6];
@@ -52,17 +56,17 @@ int waitSpecialAthkar = 0;
   "\xD8\xA7\xD9\x84\xD8\xB9\xD8\xB4\xD8\xA7\xD8\xA1"	//isha
 };*/
 gchar *names[] = {
-  "الصبح",	//sobh
-  "الشروق",	//
-  "الظهر",	//
-  "العصر",	//
-  "المغرب",	//
-  "العشاء"	//isha
+  "الصبح",			//sobh
+  "الشروق",		//
+  "الظهر",			//
+  "العصر",			//
+  "المغرب",		//
+  "العشاء"		//isha
 };
 
 /* update period in seconds */
 int period = 59;
-int dhikrPeriod=1;
+int dhikrPeriod = 1;
 gboolean first_run = TRUE;
 
 GSettings *settings;
@@ -74,6 +78,7 @@ GtkWidget *indicator_menu;
 GtkWidget *athantimes_items[6];
 GtkWidget *stopathan_item;
 GtkWidget *hijri_item;
+GtkWidget *hijriConversion_item;
 GtkWidget *adhkar_subitems;
 GtkWidget *adhkar_item;
 GtkWidget *dhikr_item;
@@ -115,10 +120,10 @@ struct config
   int sleepingAthkarTime;
   int athkarPeriod;
   int specialAthkarDuration;
-  char* beforeTitleHtml;
-  char* afterTitleHtml;
-  char* afterAthkarHtml;
-  char* dhikrSeperator;
+  char *beforeTitleHtml;
+  char *afterTitleHtml;
+  char *afterAthkarHtml;
+  char *dhikrSeperator;
 };
 
 //char* beforeTitleHtml="<!DOCTYPE html><html><head><meta charset='utf-8' /></head><body style='direction: rtl;'><table style='width:100%'><tr><td style='width:35px'><img src='/usr/share/indicator-athantime/indicator-athantime2.png' /></td><td style='text-align:center;font-weight:bold;'>";
@@ -206,7 +211,7 @@ get_config (char *filename)
 	    }
 	  else if (i == 2)
 	    {
-	      strncpy (configstruct.city, cfline, strlen (cfline)-1);
+	      strncpy (configstruct.city, cfline, strlen (cfline) - 1);
 	    }
 	  else if (i == 3)
 	    {
@@ -222,11 +227,12 @@ get_config (char *filename)
 	    }
 	  else if (i == 6)
 	    {
-	      strncpy (configstruct.athan, cfline, strlen (cfline)-1);
+	      strncpy (configstruct.athan, cfline, strlen (cfline) - 1);
 	    }
 	  else if (i == 7)
 	    {
-	      strncpy (configstruct.notificationfile, cfline, strlen (cfline)-1);
+	      strncpy (configstruct.notificationfile, cfline,
+		       strlen (cfline) - 1);
 	    }
 	  else if (i == 8)
 	    {
@@ -356,27 +362,35 @@ get_config (char *filename)
 	    }
 	  else if (i == 26)
 	    {
-			//configstruct.beforeTitleHtml = g_malloc (sizeof (gchar) * strlen (cfline));
-			configstruct.beforeTitleHtml = calloc (sizeof (char), strlen (cfline));
-	      strncpy (configstruct.beforeTitleHtml, cfline, strlen (cfline)-1);
+	      //configstruct.beforeTitleHtml = g_malloc (sizeof (gchar) * strlen (cfline));
+	      configstruct.beforeTitleHtml =
+		calloc (sizeof (char), strlen (cfline));
+	      strncpy (configstruct.beforeTitleHtml, cfline,
+		       strlen (cfline) - 1);
 	    }
 	  else if (i == 27)
 	    {
-			//configstruct.afterTitleHtml = g_malloc (sizeof (gchar) * strlen (cfline));
-			configstruct.afterTitleHtml = calloc (sizeof (char), strlen (cfline));
-	      strncpy (configstruct.afterTitleHtml, cfline, strlen (cfline)-1);
+	      //configstruct.afterTitleHtml = g_malloc (sizeof (gchar) * strlen (cfline));
+	      configstruct.afterTitleHtml =
+		calloc (sizeof (char), strlen (cfline));
+	      strncpy (configstruct.afterTitleHtml, cfline,
+		       strlen (cfline) - 1);
 	    }
 	  else if (i == 28)
 	    {
-			//configstruct.afterAthkarHtml = g_malloc (sizeof (gchar) * strlen (cfline));
-			configstruct.afterAthkarHtml = calloc (sizeof (char), strlen (cfline));
-	      strncpy (configstruct.afterAthkarHtml, cfline, strlen (cfline)-1);
+	      //configstruct.afterAthkarHtml = g_malloc (sizeof (gchar) * strlen (cfline));
+	      configstruct.afterAthkarHtml =
+		calloc (sizeof (char), strlen (cfline));
+	      strncpy (configstruct.afterAthkarHtml, cfline,
+		       strlen (cfline) - 1);
 	    }
 	  else if (i == 29)
 	    {
-			//configstruct.dhikrSeperator = g_malloc (sizeof (gchar) * strlen (cfline));
-			configstruct.dhikrSeperator = calloc (sizeof (char), strlen (cfline));
-	      strncpy (configstruct.dhikrSeperator, cfline, strlen (cfline)-1);
+	      //configstruct.dhikrSeperator = g_malloc (sizeof (gchar) * strlen (cfline));
+	      configstruct.dhikrSeperator =
+		calloc (sizeof (char), strlen (cfline));
+	      strncpy (configstruct.dhikrSeperator, cfline,
+		       strlen (cfline) - 1);
 	    }
 	  i++;
 	}			// End while
@@ -440,23 +454,23 @@ bus_call (GstBus * bus, GstMessage * msg, gpointer data)
     {
 
     case GST_MESSAGE_EOS:
-		TRACE ("End of stream\n");
-		g_main_loop_quit (loop);
-		break;
+      TRACE ("End of stream\n");
+      g_main_loop_quit (loop);
+      break;
 
     case GST_MESSAGE_ERROR:
       {
-		gchar *debug;
-		GError *error;
+	gchar *debug;
+	GError *error;
 
-		gst_message_parse_error (msg, &error, &debug);
-		g_free (debug);
+	gst_message_parse_error (msg, &error, &debug);
+	g_free (debug);
 
-		g_printerr ("Error: %s\n", error->message);
-		g_error_free (error);
+	g_printerr ("Error: %s\n", error->message);
+	g_error_free (error);
 
-		g_main_loop_quit (loop);
-		break;
+	g_main_loop_quit (loop);
+	break;
       }
     default:
       break;
@@ -555,16 +569,16 @@ next_prayer (void)
   for (i = 0; i < 6; i++)
     {
       if (i == 1)
-		{
-		  continue;
-		}			/* skip shorouk */
+	{
+	  continue;
+	}			/* skip shorouk */
       next_prayer_id = i;
       if (ptList[i].hour > curtime->tm_hour ||
 	  (ptList[i].hour == curtime->tm_hour &&
 	   ptList[i].minute >= curtime->tm_min))
-		{
-		  return;
-		}
+	{
+	  return;
+	}
     }
 
   next_prayer_id = 0;
@@ -612,22 +626,125 @@ static int show_dhikr_callback(void *data, int argc, char **argv, char **azColNa
    return 0;
 }
 */
+GtkWidget *dateWindow = NULL;
+GtkWidget *calendar;
+GtkWidget *HijriDateLabelValue;
+GtkWidget *salatTimesLabel;
+void
+calendar_day_selected (GtkWidget * widget)
+{
+  char hiriDate[256];
+  char salatTimes[256];
+  guint day, month, year;
+  sDate mydate;
+  Date *prayerDate1 = NULL;
+  Prayer ptList1[6];
+
+  gtk_calendar_get_date (GTK_CALENDAR (calendar), &year, &month, &day);
+  G2H (&mydate, day, month, year);
+  sprintf (hiriDate, "%d/%d/%d\n", mydate.day, mydate.month, mydate.year);
+  gtk_label_set_text (GTK_LABEL (HijriDateLabelValue), hiriDate);
+
+
+  prayerDate1 = g_malloc (sizeof (Date));
+  prayerDate1->day = day;
+  prayerDate1->month = month;
+  prayerDate1->year = year;
+  getPrayerTimes (loc, calcMethod, prayerDate1, ptList1);
+
+  sprintf (salatTimes,
+	   "%s\t%s\t%s\t%s\t%s\n%d:%02d\t%d:%02d\t%d:%02d\t%d:%02d\t%d:%02d",
+	   "الصبح", "الظهر", "العصر", "المغرب",
+	   "العشاء", ptList1[0].hour, ptList1[0].minute,
+	   ptList1[2].hour, ptList1[2].minute, ptList1[3].hour,
+	   ptList1[3].minute, ptList1[4].hour, ptList1[4].minute,
+	   ptList1[5].hour, ptList1[5].minute);
+  gtk_label_set_text (GTK_LABEL (salatTimesLabel), salatTimes);
+  free (prayerDate1);
+}
+
+static void
+calendar_select_today (GtkWidget * button, gpointer * calendar_data)
+{
+  time_t mytime;
+  struct tm *t_ptr;
+
+  /* Get current dte structure */
+  time (&mytime);
+  t_ptr = localtime (&mytime);
+
+  gtk_calendar_select_month (GTK_CALENDAR (calendar), t_ptr->tm_mon + 1,
+			     t_ptr->tm_year + 1900);
+  gtk_calendar_select_day (GTK_CALENDAR (calendar), t_ptr->tm_mday);
+  gtk_calendar_mark_day (GTK_CALENDAR (calendar), t_ptr->tm_mday);
+}
+
+void
+initDateWindow ()
+{
+
+  if (!dateWindow)
+    {
+      dateWindow = gtk_window_new (GTK_WINDOW_TOPLEVEL);
+      gtk_window_set_type_hint (GTK_WINDOW (dateWindow),
+				GDK_WINDOW_TYPE_HINT_MENU);
+      gtk_window_set_keep_above (GTK_WINDOW (dateWindow), TRUE);
+      gtk_window_set_title (GTK_WINDOW (dateWindow),
+			    "برنامج أوقات الأذان: التقويم");
+      gtk_window_set_resizable (GTK_WINDOW (dateWindow), FALSE);
+      g_signal_connect (G_OBJECT (dateWindow), "destroy",
+			G_CALLBACK (gtk_widget_destroyed), &dateWindow);
+
+
+      GtkWidget *grid = gtk_grid_new ();
+      gtk_container_add (GTK_CONTAINER (dateWindow), grid);
+
+      gtk_grid_set_row_spacing (GTK_GRID (grid), 5);
+      gtk_grid_set_column_spacing (GTK_GRID (grid), 5);
+      calendar = gtk_calendar_new ();
+      GtkWidget *todayButton = gtk_button_new_with_label ("today");
+
+      GtkWidget *HijriDateLabel =
+	gtk_label_new ("التاريخ الهجري: ");
+      gtk_label_set_max_width_chars (GTK_LABEL (HijriDateLabel),
+				     strlen
+				     ("التاريخ الهجري: "));
+      HijriDateLabelValue = gtk_label_new ("");
+      gtk_label_set_selectable (GTK_LABEL (HijriDateLabelValue), TRUE);
+      salatTimesLabel = gtk_label_new ("");
+      gtk_label_set_selectable (GTK_LABEL (salatTimesLabel), TRUE);
+
+      gtk_grid_attach (GTK_GRID (grid), calendar, 0, 0, 2, 1);
+      gtk_grid_attach (GTK_GRID (grid), todayButton, 0, 1, 2, 1);
+      gtk_grid_attach (GTK_GRID (grid), HijriDateLabel, 0, 2, 1, 1);
+      gtk_grid_attach (GTK_GRID (grid), HijriDateLabelValue, 1, 2, 1, 1);
+      gtk_grid_attach (GTK_GRID (grid), salatTimesLabel, 0, 3, 2, 1);
+      g_signal_connect (calendar, "day_selected",
+			G_CALLBACK (calendar_day_selected), calendar);
+      g_signal_connect (todayButton,
+			"clicked", G_CALLBACK (calendar_select_today), NULL);
+
+    }
+
+}
+
 GtkWidget *dhikrWindow = NULL;
 //GtkWidget *label = NULL;
 //GtkWidget *frame = NULL;
-GtkWidget *sw = NULL; //scrolledwindow
+GtkWidget *sw = NULL;		//scrolledwindow
 //GtkWidget *contents = NULL;
 //GtkTextBuffer *buffer = NULL;
 GtkWidget *webView = NULL;
 
 gboolean
-reset_contextmenu (WebKitWebView       *web_view,
-               GtkWidget           *default_menu,
-               WebKitHitTestResult *hit_test_result,
-               gboolean             triggered_with_keyboard,
-               gpointer             user_data){
-				   return TRUE;
-			   }
+reset_contextmenu (WebKitWebView * web_view,
+		   GtkWidget * default_menu,
+		   WebKitHitTestResult * hit_test_result,
+		   gboolean triggered_with_keyboard, gpointer user_data)
+{
+  return TRUE;
+}
+
 void
 initAthkarWindow (int heightWindow)
 {
@@ -637,7 +754,8 @@ initAthkarWindow (int heightWindow)
   if (!dhikrWindow)
     {
       dhikrWindow = gtk_window_new (GTK_WINDOW_TOPLEVEL);
-		gtk_window_set_title (GTK_WINDOW (dhikrWindow), "برنامج أوقات الأذان: أذكار");
+      gtk_window_set_title (GTK_WINDOW (dhikrWindow),
+			    "برنامج أوقات الأذان: أذكار");
       //gtk_window_set_resizable (GTK_WINDOW (dhikrWindow), FALSE);
 
       gtk_window_set_keep_above (GTK_WINDOW (dhikrWindow), TRUE);
@@ -652,30 +770,34 @@ initAthkarWindow (int heightWindow)
 				      GTK_POLICY_AUTOMATIC);
 
       //gtk_scrolled_window_set_shadow_type (GTK_SCROLLED_WINDOW (sw), GTK_SHADOW_IN);
-     
-      
+
+
       //contents = gtk_text_view_new ();
       //gtk_text_view_set_wrap_mode (GTK_TEXT_VIEW (contents), GTK_WRAP_WORD);
       //gtk_text_view_set_overwrite (GTK_TEXT_VIEW (contents), FALSE);
       //gtk_text_view_set_editable (GTK_TEXT_VIEW (contents), FALSE);
       //gtk_widget_grab_focus (contents);
       //gtk_container_add (GTK_CONTAINER (sw), contents);
-		
-		webView = webkit_web_view_new();
-		//g_object_ref(G_OBJECT(webView));
-		//g_object_ref_sink(G_OBJECT (webView));
-		//g_assert_cmpint(G_OBJECT(webView)->ref_count, ==, 1);
-    // This crashed with the original version
-    //g_object_unref(webView);
-    
-      webkit_web_view_set_editable (WEBKIT_WEB_VIEW(webView), FALSE);
-      gtk_container_add(GTK_CONTAINER(sw), GTK_WIDGET(webView));
-       gtk_container_add (GTK_CONTAINER (dhikrWindow), sw);
 
-      g_signal_connect (G_OBJECT (dhikrWindow), "destroy", G_CALLBACK (gtk_widget_destroyed), &dhikrWindow);
-      g_signal_connect (G_OBJECT (dhikrWindow), "enter-notify-event", G_CALLBACK (set_opac), NULL);
-      g_signal_connect (G_OBJECT (dhikrWindow), "leave-notify-event", G_CALLBACK (reset_opac), NULL);
-      g_signal_connect (G_OBJECT (webView), "context-menu", G_CALLBACK (reset_contextmenu), NULL);
+      webView = webkit_web_view_new ();
+      //g_object_ref(G_OBJECT(webView));
+      //g_object_ref_sink(G_OBJECT (webView));
+      //g_assert_cmpint(G_OBJECT(webView)->ref_count, ==, 1);
+      // This crashed with the original version
+      //g_object_unref(webView);
+
+      webkit_web_view_set_editable (WEBKIT_WEB_VIEW (webView), FALSE);
+      gtk_container_add (GTK_CONTAINER (sw), GTK_WIDGET (webView));
+      gtk_container_add (GTK_CONTAINER (dhikrWindow), sw);
+
+      g_signal_connect (G_OBJECT (dhikrWindow), "destroy",
+			G_CALLBACK (gtk_widget_destroyed), &dhikrWindow);
+      g_signal_connect (G_OBJECT (dhikrWindow), "enter-notify-event",
+			G_CALLBACK (set_opac), NULL);
+      g_signal_connect (G_OBJECT (dhikrWindow), "leave-notify-event",
+			G_CALLBACK (reset_opac), NULL);
+      g_signal_connect (G_OBJECT (webView), "context-menu",
+			G_CALLBACK (reset_contextmenu), NULL);
       gtk_container_set_border_width (GTK_CONTAINER (dhikrWindow), 8);
 
     }
@@ -692,12 +814,13 @@ initAthkarWindow (int heightWindow)
   //geometry.win_gravity = GDK_GRAVITY_SOUTH_EAST;
 
   //gtk_window_set_geometry_hints (GTK_WINDOW (dhikrWindow),
-	//			 NULL, &geometry, geometry_mask);
+  //                       NULL, &geometry, geometry_mask);
 
 
   /* Obtaining the buffer associated with the widget. */
   //buffer = gtk_text_view_get_buffer (GTK_TEXT_VIEW (contents));
 }
+
 /*
 static int
 show_athkar_window (const char *title, const char *nass)
@@ -780,10 +903,14 @@ show_athkar (int AthkarType)
   const char *nass = NULL;
   sqlite3_stmt *stmt;
   int row = 0;
-	size_t htmlSize=10;
-	
-	htmlSize+=strlen(configstruct.beforeTitleHtml)+strlen(configstruct.afterTitleHtml)+strlen(configstruct.dhikrSeperator)+strlen(configstruct.afterAthkarHtml);
-	
+  size_t htmlSize = 10;
+
+  htmlSize +=
+    strlen (configstruct.beforeTitleHtml) +
+    strlen (configstruct.afterTitleHtml) +
+    strlen (configstruct.dhikrSeperator) +
+    strlen (configstruct.afterAthkarHtml);
+
   switch (AthkarType)
     {
     case MORNING:
@@ -805,39 +932,40 @@ show_athkar (int AthkarType)
 
 
   sqlite3_prepare_v2 (dhikrdb, sql, strlen (sql) + 1, &stmt, NULL);
-	
+
   while (1)
     {
       int s;
 
       s = sqlite3_step (stmt);
       if (s == SQLITE_ROW)
-		{
-		 
-		  nass = (const char *)sqlite3_column_text (stmt, 1);
-		  //printf ("%d: %s\n", row, text);
-			if(row == 0){
-				 title = (const char *)sqlite3_column_text (stmt, 0);
-				htmlSize += strlen(title);
-			}
-			htmlSize += strlen(nass)+strlen(configstruct.dhikrSeperator);
-		  row++;
-		 // TRACE ("Special Athkar shown: %d\n", row);
-		}
+	{
+
+	  nass = (const char *) sqlite3_column_text (stmt, 1);
+	  //printf ("%d: %s\n", row, text);
+	  if (row == 0)
+	    {
+	      title = (const char *) sqlite3_column_text (stmt, 0);
+	      htmlSize += strlen (title);
+	    }
+	  htmlSize += strlen (nass) + strlen (configstruct.dhikrSeperator);
+	  row++;
+	  // TRACE ("Special Athkar shown: %d\n", row);
+	}
       else if (s == SQLITE_DONE)
-		{
-		  TRACE ("selection of athkar done.\n");
-		  break;
-		}
-		  else
-		{
-		  TRACE ("Show athkar Failed.\n");
-		  return;
-		}
+	{
+	  TRACE ("selection of athkar done.\n");
+	  break;
+	}
+      else
+	{
+	  TRACE ("Show athkar Failed.\n");
+	  return;
+	}
     }
-    //html = malloc(htmlSize);
-    html = calloc(sizeof (gchar), htmlSize);
-    //html = g_malloc (sizeof (gchar) * htmlSize);
+  //html = malloc(htmlSize);
+  html = calloc (sizeof (gchar), htmlSize);
+  //html = g_malloc (sizeof (gchar) * htmlSize);
   sqlite3_reset (stmt);
   row = 0;
   while (1)
@@ -846,51 +974,53 @@ show_athkar (int AthkarType)
 
       s = sqlite3_step (stmt);
       if (s == SQLITE_ROW)
-		{
-		  //title = sqlite3_column_text (stmt, 0);
-		 
-		  //printf ("%d: %s\n", row, text);
-			if(row == 0){
-				 title = (const char *)sqlite3_column_text (stmt, 0);
-				 html[0] = '\0';
-				 strcat(html, configstruct.beforeTitleHtml);
-				 strcat(html, title);
-				 strcat(html, configstruct.afterTitleHtml);
-			}
-			 nass = (const char *)sqlite3_column_text (stmt, 1);
-			strcat(html, configstruct.dhikrSeperator);
-			strcat(html, nass);
-		  row++;
-		  TRACE ("Special Athkar shown: %d\n", row);
-		}
+	{
+	  //title = sqlite3_column_text (stmt, 0);
+
+	  //printf ("%d: %s\n", row, text);
+	  if (row == 0)
+	    {
+	      title = (const char *) sqlite3_column_text (stmt, 0);
+	      html[0] = '\0';
+	      strcat (html, configstruct.beforeTitleHtml);
+	      strcat (html, title);
+	      strcat (html, configstruct.afterTitleHtml);
+	    }
+	  nass = (const char *) sqlite3_column_text (stmt, 1);
+	  strcat (html, configstruct.dhikrSeperator);
+	  strcat (html, nass);
+	  row++;
+	  TRACE ("Special Athkar shown: %d\n", row);
+	}
       else if (s == SQLITE_DONE)
-		{
-		  TRACE ("selection of athkar done.\n");
-		  break;
-		}
-		  else
-		{
-		  TRACE ("Show athkar Failed.\n");
-		  return;
-		}
+	{
+	  TRACE ("selection of athkar done.\n");
+	  break;
+	}
+      else
+	{
+	  TRACE ("Show athkar Failed.\n");
+	  return;
+	}
     }
-    strcat(html, configstruct.afterAthkarHtml);
+  strcat (html, configstruct.afterAthkarHtml);
 
   initAthkarWindow (250);
 
   //gtk_window_set_title (GTK_WINDOW (dhikrWindow), title);
   //gtk_window_set_title (GTK_WINDOW (dhikrWindow), "برنامج أوقات الأذان: أذكار");
 
-	webkit_web_view_load_string(WEBKIT_WEB_VIEW(webView), html, "text/html", "utf-8", "file://");
-	free(html);
-    html = NULL;
+  webkit_web_view_load_string (WEBKIT_WEB_VIEW (webView), html, "text/html",
+			       "utf-8", "file://");
+  free (html);
+  html = NULL;
 
   if (!gtk_widget_get_visible (dhikrWindow))
     {
       gtk_widget_show_all (dhikrWindow);
     }
-    TRACE ("Show athkar done.\n");
-	return;
+  TRACE ("Show athkar done.\n");
+  return;
 }
 
 // Taken and modified from minbar
@@ -944,14 +1074,14 @@ update_remaining (void)
     prev_prayer_id = next_prayer_id - 1;
   int prev_minutes =
     ptList[prev_prayer_id].minute + ptList[prev_prayer_id].hour * 60;
-  
+
   if (ptList[prev_prayer_id].hour > curtime->tm_hour)
     {
       /* salat is on prev day (subh, and even Isha sometimes) before midnight */
       cur_minutes += 60 * 24;
     }
-    difference_prev_prayer = cur_minutes - prev_minutes;
-    
+  difference_prev_prayer = cur_minutes - prev_minutes;
+
   TRACE ("next hour: %d, cur hour: %d, diff:%d\n",
 	 ptList[prev_prayer_id].hour, curtime->tm_hour,
 	 difference_prev_prayer);
@@ -995,7 +1125,7 @@ update_remaining (void)
 				       label_guide);
 	    }
 	  waitSpecialAthkar = 0;
-	  
+
 	  break;
 	case 3:		//asr
 	  if (difference_prev_prayer == configstruct.afterAsr)
@@ -1003,7 +1133,7 @@ update_remaining (void)
 	  else if (difference_prev_prayer < configstruct.afterAsr)
 	    {
 	      g_snprintf (next_prayer_string, 400,
-			 "%s منذ %d دقيقة",
+			  "%s منذ %d دقيقة",
 			  names[prev_prayer_id], difference_prev_prayer);
 	      app_indicator_set_label (indicator, next_prayer_string,
 				       label_guide);
@@ -1022,7 +1152,7 @@ update_remaining (void)
 	  else if (difference_prev_prayer < configstruct.afterMaghrib)
 	    {
 	      g_snprintf (next_prayer_string, 400,
-			 "%s منذ %d دقيقة",
+			  "%s منذ %d دقيقة",
 			  names[prev_prayer_id], difference_prev_prayer);
 	      app_indicator_set_label (indicator, next_prayer_string,
 				       label_guide);
@@ -1105,58 +1235,67 @@ update_data (gpointer data)
 	   hijridate.month, hijridate.day);
   g_object_set (hijri_item, "label", currenthijridate, NULL);
 
-	show_dhikr (NULL);
+  show_dhikr (NULL);
   return TRUE;
 }
 
-void show_random_dhikr(){
-	char sql[MAXBUF];
+void
+show_random_dhikr ()
+{
+  char sql[MAXBUF];
   const char *title;
   const char *nass;
   char *html = NULL;
-  size_t lenNass = 0, htmlSize=10;
-	int heightWindow = 150;
-	sqlite3_stmt *stmt;
-	
-	
-    htmlSize += strlen(configstruct.beforeTitleHtml)+strlen(configstruct.afterTitleHtml)+strlen(configstruct.dhikrSeperator)+strlen(configstruct.afterAthkarHtml);
-    
-  sprintf (sql, "SELECT title,nass from athkar WHERE id=%d",rand () % nbAthkar);
+  size_t lenNass = 0, htmlSize = 10;
+  int heightWindow = 150;
+  sqlite3_stmt *stmt;
 
-	sqlite3_prepare_v2 (dhikrdb, sql, strlen (sql) + 1, &stmt, NULL);
-	while (1)
+
+  htmlSize +=
+    strlen (configstruct.beforeTitleHtml) +
+    strlen (configstruct.afterTitleHtml) +
+    strlen (configstruct.dhikrSeperator) +
+    strlen (configstruct.afterAthkarHtml);
+
+  sprintf (sql, "SELECT title,nass from athkar WHERE id=%d",
+	   rand () % nbAthkar);
+
+  sqlite3_prepare_v2 (dhikrdb, sql, strlen (sql) + 1, &stmt, NULL);
+  while (1)
     {
       int s;
 
       s = sqlite3_step (stmt);
       if (s == SQLITE_ROW)
-		{
-		 
-			nass = (const char *)sqlite3_column_text (stmt, 1);
-			title = (const char *)sqlite3_column_text (stmt, 0);
-			lenNass = strlen (nass);
-			htmlSize += strlen(title)+lenNass;
-			
-			break;
-		}
+	{
+
+	  nass = (const char *) sqlite3_column_text (stmt, 1);
+	  title = (const char *) sqlite3_column_text (stmt, 0);
+	  lenNass = strlen (nass);
+	  htmlSize += strlen (title) + lenNass;
+
+	  break;
+	}
       else if (s == SQLITE_DONE)
-		{
-		  TRACE ("show_random_dhikr done.\n");
-		  break;
-		}
-		  else
-		{
-		  TRACE ("show_random_dhikr Failed.\n");
-		  return;
-		}
+	{
+	  TRACE ("show_random_dhikr done.\n");
+	  break;
+	}
+      else
+	{
+	  TRACE ("show_random_dhikr Failed.\n");
+	  return;
+	}
     }
-	TRACE ("show_random_dhikr: size nass:%d\n", (int)lenNass);
-	
-	html = g_malloc (sizeof (gchar) * htmlSize);
-	
-	sprintf(html, "%s%s%s%s%s%s",configstruct.beforeTitleHtml, title, configstruct.afterTitleHtml, configstruct.dhikrSeperator, nass, configstruct.afterAthkarHtml);
-  
-  
+  TRACE ("show_random_dhikr: size nass:%d\n", (int) lenNass);
+
+  html = g_malloc (sizeof (gchar) * htmlSize);
+
+  sprintf (html, "%s%s%s%s%s%s", configstruct.beforeTitleHtml, title,
+	   configstruct.afterTitleHtml, configstruct.dhikrSeperator, nass,
+	   configstruct.afterAthkarHtml);
+
+
   if (lenNass < 400)
     heightWindow = 200;
   else
@@ -1164,9 +1303,10 @@ void show_random_dhikr(){
 
   initAthkarWindow (heightWindow);
 
-  webkit_web_view_load_string(WEBKIT_WEB_VIEW(webView), html, "text/html", "utf-8", "file://");
-  free(html);
-  
+  webkit_web_view_load_string (WEBKIT_WEB_VIEW (webView), html, "text/html",
+			       "utf-8", "file://");
+  free (html);
+
 
   if (!gtk_widget_get_visible (dhikrWindow))
     {
@@ -1178,24 +1318,26 @@ void show_random_dhikr(){
 gboolean
 show_dhikr (gpointer data)
 {
-	TRACE ("show_dhikr: entering\n");
-	
-	if(dhikrPeriod<configstruct.athkarPeriod){
-		dhikrPeriod++;
-		return 0;
-	}else
-		dhikrPeriod=1;
-		
-	if (difference_prev_prayer>0 && difference_prev_prayer <
+  TRACE ("show_dhikr: entering\n");
+
+  if (dhikrPeriod < configstruct.athkarPeriod)
+    {
+      dhikrPeriod++;
+      return 0;
+    }
+  else
+    dhikrPeriod = 1;
+
+  if (difference_prev_prayer > 0 && difference_prev_prayer <
       (waitSpecialAthkar + configstruct.specialAthkarDuration)
       && waitSpecialAthkar > 0)
     {
       TRACE ("show_dhikr: skipped\n");
       return 0;
     }
-    TRACE ("show_dhikr: processing\n");
-    
-    show_random_dhikr();
+  TRACE ("show_dhikr: processing\n");
+
+  show_random_dhikr ();
 
   return TRUE;
 }
@@ -1235,42 +1377,66 @@ initializeAthkarDatabase ()
       TRACE ("Opened Athkar database successfully\n");
 
 
-      sql = "SELECT count(*) from athkar WHERE title!='أذكار الصباح' AND title!='أذكار المساء' AND title!='أذكار النوم' LIMIT 1";
+      sql =
+	"SELECT count(*) from athkar WHERE title!='أذكار الصباح' AND title!='أذكار المساء' AND title!='أذكار النوم' LIMIT 1";
       //sql = "SELECT count(*) from athkar";
 
       /* Execute SQL statement */
       rc = sqlite3_exec (dhikrdb, sql, count_athkar_callback, NULL, &zErrMsg);
       if (rc != SQLITE_OK)
-		{
-		  fprintf (stderr, "SQL error: %s\n", zErrMsg);
-		  sqlite3_free (zErrMsg);
-		}
-		else
-		{
-		  TRACE ("Athkar counted successfully\n");
-		}
+	{
+	  fprintf (stderr, "SQL error: %s\n", zErrMsg);
+	  sqlite3_free (zErrMsg);
+	}
+      else
+	{
+	  TRACE ("Athkar counted successfully\n");
+	}
     }
 }
 
-void cb_show_dhikr(GtkMenuItem *menu_item, gpointer user_data){
-	TRACE ("cb_show_dhikr: entering\n");
-	dhikrPeriod = 1;
-	show_random_dhikr();
+void
+cb_show_dhikr (GtkMenuItem * menu_item, gpointer user_data)
+{
+  TRACE ("cb_show_dhikr: entering\n");
+  dhikrPeriod = 1;
+  show_random_dhikr ();
 }
-void cb_show_sleeping_athkar(GtkMenuItem *menu_item, gpointer user_data){
-	TRACE ("cb_show_sleeping_athkar: entering\n");
-	dhikrPeriod = 1;
-	show_athkar(SLEEPING);
+
+void
+cb_show_sleeping_athkar (GtkMenuItem * menu_item, gpointer user_data)
+{
+  TRACE ("cb_show_sleeping_athkar: entering\n");
+  dhikrPeriod = 1;
+  show_athkar (SLEEPING);
 }
-void cb_show_evening_athkar(GtkMenuItem *menu_item, gpointer user_data){
-	TRACE ("cb_show_evening_athkar: entering\n");
-	dhikrPeriod = 1;
-	show_athkar(EVENING);
+
+void
+cb_show_evening_athkar (GtkMenuItem * menu_item, gpointer user_data)
+{
+  TRACE ("cb_show_evening_athkar: entering\n");
+  dhikrPeriod = 1;
+  show_athkar (EVENING);
 }
-void cb_show_morning_athkar(GtkMenuItem *menu_item, gpointer user_data){
-	TRACE ("cb_show_morning_athkar: entering\n");
-	dhikrPeriod = 1;
-	show_athkar(MORNING);
+
+void
+cb_show_morning_athkar (GtkMenuItem * menu_item, gpointer user_data)
+{
+  TRACE ("cb_show_morning_athkar: entering\n");
+  dhikrPeriod = 1;
+  show_athkar (MORNING);
+}
+
+void
+cb_show_hijriConversionWindow (GtkMenuItem * menu_item, gpointer user_data)
+{
+  initDateWindow ();
+  calendar_select_today (NULL, NULL);
+  if (!gtk_widget_get_visible (dateWindow))
+    {
+      gtk_widget_show_all (dateWindow);
+    }
+  TRACE ("Hijri Conversion window shown successfully\n");
 }
 
 int
@@ -1375,32 +1541,44 @@ main (int argc, char **argv)
 	   hijridate.month, hijridate.day);
   hijri_item = gtk_menu_item_new_with_label (currenthijridate);	//hijri date item
   gtk_menu_shell_append (GTK_MENU_SHELL (indicator_menu), hijri_item);
+  hijriConversion_item = gtk_menu_item_new_with_label ("التقويم");	//calendar item
+  gtk_menu_shell_append (GTK_MENU_SHELL (indicator_menu),
+			 hijriConversion_item);
 
   //separator
   GtkWidget *sep = gtk_separator_menu_item_new ();
   gtk_menu_shell_append (GTK_MENU_SHELL (indicator_menu), sep);
-  
-	adhkar_item = gtk_menu_item_new_with_label("الأذكار");
-	gtk_menu_shell_append(GTK_MENU_SHELL(indicator_menu), adhkar_item);
-	adhkar_subitems = gtk_menu_new();
-	gtk_menu_item_set_submenu (GTK_MENU_ITEM(adhkar_item), adhkar_subitems);
-	sleepingAthkar_item = gtk_menu_item_new_with_label("أذكار النوم");
-	gtk_menu_shell_append(GTK_MENU_SHELL(adhkar_subitems), sleepingAthkar_item);
-	g_signal_connect(sleepingAthkar_item, "activate", G_CALLBACK (cb_show_sleeping_athkar), NULL);
-	eveningAthkar_item = gtk_menu_item_new_with_label("أذكار المساء");
-	gtk_menu_shell_append(GTK_MENU_SHELL(adhkar_subitems), eveningAthkar_item);
-	g_signal_connect(eveningAthkar_item, "activate", G_CALLBACK (cb_show_evening_athkar), NULL);
-	morningAthkar_item = gtk_menu_item_new_with_label("أذكار الصباح");
-	gtk_menu_shell_append(GTK_MENU_SHELL(adhkar_subitems), morningAthkar_item);
-	g_signal_connect(morningAthkar_item, "activate", G_CALLBACK (cb_show_morning_athkar), NULL);
-	dhikr_item = gtk_menu_item_new_with_label("أظهر ذكرا");
-	gtk_menu_shell_append(GTK_MENU_SHELL(adhkar_subitems), dhikr_item);
-	g_signal_connect(dhikr_item, "activate", G_CALLBACK (cb_show_dhikr), NULL);
+
+  adhkar_item = gtk_menu_item_new_with_label ("الأذكار");
+  gtk_menu_shell_append (GTK_MENU_SHELL (indicator_menu), adhkar_item);
+  adhkar_subitems = gtk_menu_new ();
+  gtk_menu_item_set_submenu (GTK_MENU_ITEM (adhkar_item), adhkar_subitems);
+  sleepingAthkar_item =
+    gtk_menu_item_new_with_label ("أذكار النوم");
+  gtk_menu_shell_append (GTK_MENU_SHELL (adhkar_subitems),
+			 sleepingAthkar_item);
+  g_signal_connect (sleepingAthkar_item, "activate",
+		    G_CALLBACK (cb_show_sleeping_athkar), NULL);
+  eveningAthkar_item =
+    gtk_menu_item_new_with_label ("أذكار المساء");
+  gtk_menu_shell_append (GTK_MENU_SHELL (adhkar_subitems),
+			 eveningAthkar_item);
+  g_signal_connect (eveningAthkar_item, "activate",
+		    G_CALLBACK (cb_show_evening_athkar), NULL);
+  morningAthkar_item =
+    gtk_menu_item_new_with_label ("أذكار الصباح");
+  gtk_menu_shell_append (GTK_MENU_SHELL (adhkar_subitems),
+			 morningAthkar_item);
+  g_signal_connect (morningAthkar_item, "activate",
+		    G_CALLBACK (cb_show_morning_athkar), NULL);
+  dhikr_item = gtk_menu_item_new_with_label ("أظهر ذكرا");
+  gtk_menu_shell_append (GTK_MENU_SHELL (adhkar_subitems), dhikr_item);
+  g_signal_connect (dhikr_item, "activate", G_CALLBACK (cb_show_dhikr), NULL);
 
   //separator
   sep = gtk_separator_menu_item_new ();
   gtk_menu_shell_append (GTK_MENU_SHELL (indicator_menu), sep);
-  
+
   for (i = 0; i < 6; i++)
     {
       athantimes_items[i] = gtk_menu_item_new_with_label ("");
@@ -1411,6 +1589,9 @@ main (int argc, char **argv)
   //separator
   sep = gtk_separator_menu_item_new ();
   gtk_menu_shell_append (GTK_MENU_SHELL (indicator_menu), sep);
+
+  g_signal_connect (hijriConversion_item, "activate",
+		    G_CALLBACK (cb_show_hijriConversionWindow), NULL);
 
   stopathan_item = gtk_menu_item_new_with_label ("أوقف الأذان");	//stop athan item
   gtk_menu_shell_append (GTK_MENU_SHELL (indicator_menu), stopathan_item);
@@ -1432,10 +1613,10 @@ main (int argc, char **argv)
   app_indicator_set_label (indicator, "athantimes", "athantimes");
   app_indicator_set_menu (indicator, GTK_MENU (indicator_menu));
 
-  Method *calcMethod = g_malloc (sizeof (Method));
+  calcMethod = g_malloc (sizeof (Method));
   getMethod (configstruct.method, calcMethod);
 
-  Location *loc = g_malloc (sizeof (Location));
+  loc = g_malloc (sizeof (Location));
 
   loc->degreeLong = configstruct.lon;
   loc->degreeLat = configstruct.lat;
@@ -1472,8 +1653,8 @@ main (int argc, char **argv)
   g_timeout_add (1000 * period, update_data, NULL);
 
   //if (configstruct.athkarPeriod > 0)
-    //g_timeout_add (1000 * 60 * configstruct.athkarPeriod, show_dhikr, NULL);
-    //show_dhikr (NULL);
+  //g_timeout_add (1000 * 60 * configstruct.athkarPeriod, show_dhikr, NULL);
+  //show_dhikr (NULL);
 
   gtk_main ();
 

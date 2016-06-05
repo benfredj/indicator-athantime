@@ -18,6 +18,7 @@ install:
 	mkdir -p /usr/share/indicator-athantime
 	cp indicator-athantime.svg /usr/share/icons/hicolor/scalable/apps
 	gtk-update-icon-cache -f /usr/share/icons/hicolor/
+	cp indicator-athantime2.png /usr/share/indicator-athantime
 	cp athan.ogg /usr/share/indicator-athantime
 	cp adhkar.db /usr/share/indicator-athantime
 	cp Rooster_Short_Crow.ogg /usr/share/indicator-athantime
