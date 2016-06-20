@@ -34,7 +34,9 @@ Adhkar.db is an sqlite3 file. The adhkar are written in HTML.You can add others 
 
 
 TODO:
-- 
+- add more athkar and more categories
+- rewrite the code as a master file and a set of plugins (adhan, athkar, calendar). The plugins follow a common plugin template.
+- add more plugins
 - solve the problem of the errors "GLib-GObject-CRITICAL **: g_object_ref: assertion 'object->ref_count > 0' failed" and "GLib-GObject-CRITICAL **: g_object_unref: assertion 'object->ref_count > 0' failed". They seems to be related to the webkitgtk widget. Thank you for any collaboration...
 
 
