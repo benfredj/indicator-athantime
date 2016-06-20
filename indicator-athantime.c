@@ -42,6 +42,7 @@ GDate *currentDate;
 Date *prayerDate;
 static gchar *next_prayer_string;
 sqlite3 *dhikrdb;
+sqlite3 *citiesdb;
 int nbAthkar = 0;
 gboolean showingAthkar = 0;
 int difference_prev_prayer = 0;
@@ -85,6 +86,7 @@ GtkWidget *dhikr_item;
 GtkWidget *morningAthkar_item;
 GtkWidget *eveningAthkar_item;
 GtkWidget *sleepingAthkar_item;
+GtkWidget *settings_item;
 GtkWidget *quit_item;
 #define FILENAME ".athantime.conf"
 #define MAXBUF 1024
@@ -94,7 +96,9 @@ struct config
 {
   double lat;
   double lon;
-  char city[MAXBUF];
+  int countryId;
+  int cityId;
+  //char city[MAXBUF];
   double height;
   int correctiond;
   int method;
@@ -131,6 +135,7 @@ struct config
 //char* afterAthkarHtml="</td></tr></table></body></html>";
 //char* dhikrSeperator="<hr/>";
 gboolean show_dhikr (gpointer data);
+static void fill_combo_cities ();
 
 sDate hijridate;
 void
@@ -154,11 +159,61 @@ getCurrentHijriDate ()
 
 }
 
+void incrementTime(int *h, int* m, int incM){
+	//printf("%d:%d + %d = ",*h, *m, incM);
+  *h +=(*m+incM)/60;
+	*m = (*m+incM)%60;
+	*h %= 24;
+  //printf("%d:%d\n", *h, *m);
+}
+
+int writeConfigInFile(char *filename){
+	FILE *file = fopen(filename, "w");
+	if(!file) return 1;
+	fprintf(file, "# Latitude in decimal degree \nlat=%f\n#\n# Longitude in decimal degree\nlon=%f\n#\n# country id\ncountry=%d\n#\n# city id\ncity=%d\n# \n# Height above Sea level in meters\nheight=%f\n# \n# Time Zone, difference from GMT\ncorrectiond=%d\n# \n# specify the prayer calculation method:\n# 0: none. Set to default or 0\n# 1: Egyptian General Authority of Survey\n# 2: University of Islamic Sciences, Karachi (Shaf'i)\n# 3: University of Islamic Sciences, Karachi (Hanafi)\n# 4: Islamic Society of North America\n# 5: Muslim World League (MWL)\n# 6: Umm Al-Qurra, Saudi Arabia\n# 7: Fixed Ishaa Interval (always 90)\n# 8: Egyptian General Authority of Survey (Egypt)\nmethod=%d\n# \n# full path of the athan sound file (OGG file)\nathan=%s\n# \n# full path of the notification sound file (OGG file) (before and after athan)\nnotification.file=%s\n# \n# notification time before and after each athan in minutes\n# set to 0 to disable the notification\nnotification time before sobh=%d\nnotification time after sobh=%d\nnotification time before dohr=%d\nnotification time after dohr=%d\nnotification time before asr=%d\nnotification time after asr=%d\nnotification time before maghrib=%d\nnotification time after maghrib=%d\nnotification time before isha=%d\nnotification time after isha=%d\n# \n# athkar\n# show morning athkar? 1:true, 0:false\nshow morning athkar=%d\n# when to show the morning athkar after Sobh (in minutes)\nmorning athkar minutes after Sobh=%d\n# show evening athkar? 1:true, 0:false\nshow evening athkar=%d\n# when to show the evening athkar after Asr (in minutes)\nevening athkar minutes after Asr=%d\n# show sleeping athkar? 1:true, 0:false\nshow sleeping athkar=%d\n# when to show the sleeping athkar after Isha (in minutes)\nsleeping athkar minutes after Isha=%d\n# how many minutes needed before showing next normal dhikr (in minutes)\nother athkars period in minutes=%d\n# Spacial Athkar (morning, evening and sleeping) showing duration (in minutes)\nSpecial Athkar showing duration=%d\n# show athkar randomly or consecutively\n# show athkar randomly=?\n# \n# athkar window layout (change carefully)\nbeforeTitleHtml=%s\nafterTitleHtml=%s\nafterAthkarHtml=%s\ndhikrSeperator=%s\n# ", 
+	configstruct.lat,
+  configstruct.lon,
+  configstruct.countryId,
+  configstruct.cityId,
+  configstruct.height,
+  configstruct.correctiond,
+  configstruct.method,
+  configstruct.athan,
+  configstruct.notificationfile,
+  configstruct.beforeSobh,
+  configstruct.afterSobh,
+  configstruct.beforeDohr,
+  configstruct.afterDohr,
+  configstruct.beforeAsr,
+  configstruct.afterAsr,
+  configstruct.beforeMaghrib,
+  configstruct.afterMaghrib,
+  configstruct.beforeIsha,
+  configstruct.afterIsha,
+  configstruct.morningAthkar,
+  configstruct.morningAthkarTime,
+  configstruct.eveningAthkar,
+  configstruct.eveningAthkarTime,
+  configstruct.sleepingAthkar,
+  configstruct.sleepingAthkarTime,
+  configstruct.athkarPeriod,
+  configstruct.specialAthkarDuration,
+  configstruct.beforeTitleHtml,
+  configstruct.afterTitleHtml,
+  configstruct.afterAthkarHtml,
+  configstruct.dhikrSeperator
+);
+fclose(file);
+return 0;
+}
+char configfilefullpath[MAXBUF];
 void
 get_config (char *filename)
 {
-  char tempstr[MAXBUF];
+  //char tempstr[MAXBUF];
   configstruct.lat = 0;
+  configstruct.countryId = 199;//saudi arabia
+  configstruct.cityId = 8154;//Makkah
   configstruct.noAthan = 1;
   configstruct.noNotify = 1;
   configstruct.beforeSobh = 0;
@@ -179,14 +234,18 @@ get_config (char *filename)
   configstruct.sleepingAthkarTime = 0;
   configstruct.athkarPeriod = 0;
   configstruct.specialAthkarDuration = 0;
+  configstruct.beforeTitleHtml = NULL;
+  configstruct.afterTitleHtml = NULL;
+  configstruct.afterAthkarHtml = NULL;
+  configstruct.dhikrSeperator = NULL;
 
   struct passwd *pw = getpwuid (getuid ());
 
   TRACE ("Current working dir: %s\n", pw->pw_dir);
-  sprintf (tempstr, "%s/%s", pw->pw_dir, filename);
+  sprintf (configfilefullpath, "%s/%s", pw->pw_dir, filename);
 
-  TRACE ("Openning config file: %s\n", tempstr);
-  FILE *file = fopen (tempstr, "r");
+  TRACE ("Openning config file: %s\n", configfilefullpath);
+  FILE *file = fopen (configfilefullpath, "r");
 
   if (file != NULL)
     {
@@ -211,156 +270,180 @@ get_config (char *filename)
 	    }
 	  else if (i == 2)
 	    {
-	      strncpy (configstruct.city, cfline, strlen (cfline) - 1);
+	      //strncpy (configstruct.countryId, cfline, strlen (cfline) - 1);
+	      configstruct.countryId = atoi (cfline);
 	    }
 	  else if (i == 3)
 	    {
-	      configstruct.height = atof (cfline);
+	      //strncpy (configstruct.cityId, cfline, strlen (cfline) - 1);
+	      configstruct.cityId = atoi (cfline);
 	    }
 	  else if (i == 4)
 	    {
-	      configstruct.correctiond = atoi (cfline);
+	      configstruct.height = atof (cfline);
 	    }
 	  else if (i == 5)
 	    {
-	      configstruct.method = atoi (cfline);
+	      configstruct.correctiond = atoi (cfline);
 	    }
 	  else if (i == 6)
 	    {
+	      configstruct.method = atoi (cfline);
+	    }/*
+	 else if (i == 6)
+	    {
+	      configstruct.ramadanIshaaIncrements = atoi (cfline);
+	      if(configstruct.ramadanIshaaIncrements<0 || configstruct.ramadanIshaaIncrements>120)
+			configstruct.ramadanIshaaIncrements = 0;
+	    }*/
+	  else if (i == 7)
+	    {
 	      strncpy (configstruct.athan, cfline, strlen (cfline) - 1);
 	    }
-	  else if (i == 7)
+	  else if (i == 8)
 	    {
 	      strncpy (configstruct.notificationfile, cfline,
 		       strlen (cfline) - 1);
 	    }
-	  else if (i == 8)
+	  else if (i == 9)
 	    {
 	      configstruct.beforeSobh = atoi (cfline);
 	      if (configstruct.beforeSobh < 0
 		  || configstruct.beforeSobh > 1440 /* one day */ )
 		configstruct.beforeSobh = 0;
 	    }
-	  else if (i == 9)
+	  else if (i == 10)
 	    {
 	      configstruct.afterSobh = atoi (cfline);
 	      if (configstruct.afterSobh < 0
 		  || configstruct.afterSobh > 1440 /* one day */ )
 		configstruct.afterSobh = 0;
 	    }
-	  else if (i == 10)
+	  else if (i == 11)
 	    {
 	      configstruct.beforeDohr = atoi (cfline);
 	      if (configstruct.beforeDohr < 0
 		  || configstruct.beforeDohr > 1440 /* one day */ )
 		configstruct.beforeDohr = 0;
 	    }
-	  else if (i == 11)
+	  else if (i == 12)
 	    {
 	      configstruct.afterDohr = atoi (cfline);
 	      if (configstruct.afterDohr < 0
 		  || configstruct.afterDohr > 1440 /* one day */ )
 		configstruct.afterDohr = 0;
 	    }
-	  else if (i == 12)
+	  else if (i == 13)
 	    {
 	      configstruct.beforeAsr = atoi (cfline);
 	      if (configstruct.beforeAsr < 0
 		  || configstruct.beforeAsr > 1440 /* one day */ )
 		configstruct.beforeAsr = 0;
 	    }
-	  else if (i == 13)
+	  else if (i == 14)
 	    {
 	      configstruct.afterAsr = atoi (cfline);
 	      if (configstruct.afterAsr < 0
 		  || configstruct.afterAsr > 1440 /* one day */ )
 		configstruct.afterAsr = 0;
 	    }
-	  else if (i == 14)
+	  else if (i == 15)
 	    {
 	      configstruct.beforeMaghrib = atoi (cfline);
 	      if (configstruct.beforeMaghrib < 0
 		  || configstruct.beforeMaghrib > 1440 /* one day */ )
 		configstruct.beforeMaghrib = 0;
 	    }
-	  else if (i == 15)
+	  else if (i == 16)
 	    {
 	      configstruct.afterMaghrib = atoi (cfline);
 	      if (configstruct.afterMaghrib < 0
 		  || configstruct.afterMaghrib > 1440 /* one day */ )
 		configstruct.afterMaghrib = 0;
 	    }
-	  else if (i == 16)
+	  else if (i == 17)
 	    {
 	      configstruct.beforeIsha = atoi (cfline);
 	      if (configstruct.beforeIsha < 0
 		  || configstruct.beforeIsha > 1440 /* one day */ )
 		configstruct.beforeIsha = 0;
 	    }
-	  else if (i == 17)
+	  else if (i == 18)
 	    {
 	      configstruct.afterIsha = atoi (cfline);
 	      if (configstruct.afterIsha < 0
 		  || configstruct.afterIsha > 1440 /* one day */ )
 		configstruct.afterIsha = 0;
 	    }
-	  else if (i == 18)
+	  else if (i == 19)
 	    {
 	      configstruct.morningAthkar = atoi (cfline);
+	     
 	      if (configstruct.morningAthkar < 0
-		  || configstruct.morningAthkar > 1)
-		configstruct.morningAthkar = 0;
+		  || configstruct.morningAthkar > 1){
+		  //TRACE("getCOnfig: configstruct.morningAthkar=%d\n",configstruct.morningAthkar);
+		    configstruct.morningAthkar = 0;
+		   }
 	    }
-	  else if (i == 19)
+	      
+	  else if (i == 20)
 	    {
 	      configstruct.morningAthkarTime = atoi (cfline);
 	      if (configstruct.morningAthkarTime < 0
-		  || configstruct.morningAthkarTime > 300)
-		configstruct.morningAthkarTime = 0;
+		  || configstruct.morningAthkarTime > 300){
+		    configstruct.morningAthkarTime = 0;
+		    configstruct.morningAthkar = 0;
+		    //TRACE("getCOnfig 20: configstruct.morningAthkarTime=#%d#\n",configstruct.morningAthkarTime);
+		    //TRACE("getCOnfig 20: configstruct.morningAthkar=%d\n",configstruct.morningAthkar);
+	      }
 	    }
-	  else if (i == 20)
+	  else if (i == 21)
 	    {
 	      configstruct.eveningAthkar = atoi (cfline);
 	      if (configstruct.eveningAthkar < 0
 		  || configstruct.eveningAthkar > 1)
 		configstruct.eveningAthkar = 0;
 	    }
-	  else if (i == 21)
+	  else if (i == 22)
 	    {
 	      configstruct.eveningAthkarTime = atoi (cfline);
 	      if (configstruct.eveningAthkarTime < 0
-		  || configstruct.eveningAthkarTime > 300)
-		configstruct.eveningAthkarTime = 0;
+		  || configstruct.eveningAthkarTime > 300){
+		    configstruct.eveningAthkarTime = 0;
+		    configstruct.eveningAthkar = 0;
+		  }
 	    }
-	  else if (i == 22)
+	  else if (i == 23)
 	    {
 	      configstruct.sleepingAthkar = atoi (cfline);
 	      if (configstruct.sleepingAthkar < 0
 		  || configstruct.sleepingAthkar > 1)
 		configstruct.sleepingAthkar = 0;
 	    }
-	  else if (i == 23)
+	  else if (i == 24)
 	    {
 	      configstruct.sleepingAthkarTime = atoi (cfline);
 	      if (configstruct.sleepingAthkarTime < 0
-		  || configstruct.sleepingAthkarTime > 500)
-		configstruct.sleepingAthkarTime = 0;
+		  || configstruct.sleepingAthkarTime > 500){
+		    configstruct.sleepingAthkarTime = 0;
+		    configstruct.sleepingAthkar = 0;
+	      }
 	    }
-	  else if (i == 24)
+	  else if (i == 25)
 	    {
 	      configstruct.athkarPeriod = atoi (cfline);
 	      if (configstruct.athkarPeriod < 0
 		  || configstruct.athkarPeriod > 500)
 		configstruct.athkarPeriod = 0;
 	    }
-	  else if (i == 25)
+	  else if (i == 26)
 	    {
 	      configstruct.specialAthkarDuration = atoi (cfline);
 	      if (configstruct.specialAthkarDuration < 0
 		  || configstruct.specialAthkarDuration > 120)
 		configstruct.specialAthkarDuration = 0;
 	    }
-	  else if (i == 26)
+	  else if (i == 27)
 	    {
 	      //configstruct.beforeTitleHtml = g_malloc (sizeof (gchar) * strlen (cfline));
 	      configstruct.beforeTitleHtml =
@@ -368,7 +451,7 @@ get_config (char *filename)
 	      strncpy (configstruct.beforeTitleHtml, cfline,
 		       strlen (cfline) - 1);
 	    }
-	  else if (i == 27)
+	  else if (i == 28)
 	    {
 	      //configstruct.afterTitleHtml = g_malloc (sizeof (gchar) * strlen (cfline));
 	      configstruct.afterTitleHtml =
@@ -376,7 +459,7 @@ get_config (char *filename)
 	      strncpy (configstruct.afterTitleHtml, cfline,
 		       strlen (cfline) - 1);
 	    }
-	  else if (i == 28)
+	  else if (i == 29)
 	    {
 	      //configstruct.afterAthkarHtml = g_malloc (sizeof (gchar) * strlen (cfline));
 	      configstruct.afterAthkarHtml =
@@ -384,7 +467,7 @@ get_config (char *filename)
 	      strncpy (configstruct.afterAthkarHtml, cfline,
 		       strlen (cfline) - 1);
 	    }
-	  else if (i == 29)
+	  else if (i == 30)
 	    {
 	      //configstruct.dhikrSeperator = g_malloc (sizeof (gchar) * strlen (cfline));
 	      configstruct.dhikrSeperator =
@@ -401,8 +484,51 @@ get_config (char *filename)
   }
   //return configstruct;
 }
+void getCoordinateOfCity(){
+	if(configstruct.lat!=0 && configstruct.lon!=0) return;
+	if(configstruct.countryId==0 || configstruct.cityId==0){
+		configstruct.countryId=199; //saudi arabia
+		configstruct.cityId=8154; //makkah
+		//configstruct.correctiond = 3; //GMT + 3
+	}
+	
+  char sql[MAXBUF];
+  sqlite3_stmt *stmt;
+  
+  sprintf(sql,
+	"SELECT latitude,longitude,timeZone from citiestable WHERE countryNO='%d' AND cityNO='%d'",
+	configstruct.countryId, configstruct.cityId);
+  TRACE("getCoordinateOfCity: sql-> %s\n",sql);
 
-// Taken from minbar
+  sqlite3_prepare_v2 (citiesdb, sql, strlen (sql) + 1, &stmt, NULL);
+
+  while (1)
+    {
+      int s;
+
+      s = sqlite3_step (stmt);
+      if (s == SQLITE_ROW)
+		{
+
+		  configstruct.lat = atof((const char *) sqlite3_column_text (stmt, 0))/10000;
+		  configstruct.lon = atof((const char *) sqlite3_column_text (stmt, 1))/10000;
+		  configstruct.correctiond = atoi((const char *) sqlite3_column_text (stmt, 2))/100;
+		TRACE("getCoordinateOfCity: lat=%f, lon=%f, diffGMT:%d\n",configstruct.lat, configstruct.lon, configstruct.correctiond);
+		}
+      else if (s == SQLITE_DONE)
+		{
+		  TRACE ("selection of location done.\n");
+		  break;
+		}
+      else
+		{
+		  TRACE ("selection of location Failed.\n");
+		  return;
+		}
+    }
+  return;
+  
+}
 void
 update_date (void)
 {
@@ -420,6 +546,13 @@ update_date (void)
   prayerDate->year = g_date_get_year (currentDate);
   //update_date_label();
   g_free (currentDate);
+  
+  getCurrentHijriDate ();
+  char currenthijridate[20];
+  sprintf (currenthijridate, "%d/%d/%d هـ", hijridate.year,
+	   hijridate.month, hijridate.day);
+  g_object_set (hijri_item, "label", currenthijridate, NULL);
+  
 }
 
 
@@ -626,6 +759,547 @@ static int show_dhikr_callback(void *data, int argc, char **argv, char **azColNa
    return 0;
 }
 */
+GtkWidget *athanfile = NULL;
+GtkWidget *notificationfile = NULL;
+GtkWidget *calculationMethod = NULL;
+GtkWidget *configWindow = NULL;
+GtkWidget* countryCombo=NULL;
+GtkWidget* cityCombo=NULL;
+GtkWidget *cityLat = NULL;
+GtkWidget *cityLon = NULL;
+GtkWidget *cityTimeDiff = NULL;
+GtkWidget *citySealevel = NULL;
+GtkWidget *beforesobhCombo = NULL;
+GtkWidget *beforedohrCombo = NULL;
+GtkWidget *beforeasrCombo = NULL;
+GtkWidget *beforemaghribCombo = NULL;
+GtkWidget *beforeishaaCombo = NULL;
+GtkWidget *aftersobhCombo = NULL;
+GtkWidget *afterdohrCombo = NULL;
+GtkWidget *afterasrCombo = NULL;
+GtkWidget *aftermaghribCombo = NULL;
+GtkWidget *afterishaaCombo = NULL;
+GtkWidget *sleepingAthkarCombo = NULL;
+GtkWidget *eveningAthkarCombo = NULL;
+GtkWidget *morningAthkarCombo = NULL;
+GtkWidget *specialAthkarDurationCombo = NULL;
+GtkWidget *otherAthkarperiodCombo = NULL;
+GtkTextBuffer *beforeTitleHtmlBuffer = NULL;
+GtkTextBuffer *afterTitleHtmlBuffer = NULL;
+GtkTextBuffer *afterAthkarHtmlBuffer = NULL;
+GtkTextBuffer *dhikrSeperatorBuffer = NULL;
+
+
+void cb_config_window_destroy(){
+	  if (gtk_widget_get_visible (configWindow))
+    {
+      gtk_widget_hide (configWindow);
+    }
+}
+void cb_config_window_ok(){
+	
+	int i;
+	
+	configstruct.lat = atof (gtk_entry_get_text(GTK_ENTRY(cityLat)));
+	configstruct.lon = atof (gtk_entry_get_text(GTK_ENTRY(cityLon)));
+	configstruct.countryId = atoi (gtk_combo_box_get_active_id(GTK_COMBO_BOX(countryCombo)));
+	configstruct.cityId = atoi (gtk_combo_box_get_active_id(GTK_COMBO_BOX(cityCombo)));
+	configstruct.height = atof (gtk_entry_get_text(GTK_ENTRY(citySealevel)));
+	configstruct.correctiond = atoi (gtk_entry_get_text(GTK_ENTRY(cityTimeDiff)));
+	configstruct.method = atoi (gtk_combo_box_get_active_id(GTK_COMBO_BOX(calculationMethod)));
+	strncpy (configstruct.athan, gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(athanfile)), strlen (gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(athanfile))));
+	strncpy (configstruct.notificationfile, gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(notificationfile)),strlen (gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(notificationfile))));
+	configstruct.beforeSobh = atoi (gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(beforesobhCombo)));
+	configstruct.afterSobh = atoi (gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(aftersobhCombo)));
+	configstruct.beforeDohr = atoi (gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(beforedohrCombo)));
+	configstruct.afterDohr = atoi (gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(afterdohrCombo)));
+	configstruct.beforeAsr = atoi (gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(beforeasrCombo)));
+	configstruct.afterAsr = atoi (gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(afterasrCombo)));
+	configstruct.beforeMaghrib = atoi (gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(beforemaghribCombo)));
+	configstruct.afterMaghrib = atoi (gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(aftermaghribCombo)));
+	configstruct.beforeIsha = atoi (gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(beforeishaaCombo)));
+	configstruct.afterIsha = atoi (gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(afterishaaCombo)));
+	
+	configstruct.morningAthkar = atoi (gtk_combo_box_get_active_id(GTK_COMBO_BOX(morningAthkarCombo)));
+	if(configstruct.morningAthkar == -1) configstruct.morningAthkar=0; else configstruct.morningAthkar=1;
+	configstruct.morningAthkarTime = atoi (gtk_combo_box_get_active_id(GTK_COMBO_BOX(morningAthkarCombo)));
+	
+	configstruct.eveningAthkar = atoi (gtk_combo_box_get_active_id(GTK_COMBO_BOX(eveningAthkarCombo)));
+	if(configstruct.eveningAthkar == -1) configstruct.eveningAthkar=0; else configstruct.eveningAthkar=1;
+	configstruct.eveningAthkarTime = atoi (gtk_combo_box_get_active_id(GTK_COMBO_BOX(eveningAthkarCombo)));
+	
+	configstruct.sleepingAthkar = atoi (gtk_combo_box_get_active_id(GTK_COMBO_BOX(sleepingAthkarCombo)));
+	if(configstruct.sleepingAthkar == -1) configstruct.sleepingAthkar=0; else configstruct.sleepingAthkar=1;
+	configstruct.sleepingAthkarTime = atoi (gtk_combo_box_get_active_id(GTK_COMBO_BOX(sleepingAthkarCombo)));
+	
+	configstruct.athkarPeriod = atoi (gtk_combo_box_get_active_id(GTK_COMBO_BOX(otherAthkarperiodCombo)));
+	configstruct.specialAthkarDuration = atoi (gtk_combo_box_get_active_id(GTK_COMBO_BOX(specialAthkarDurationCombo)));
+	
+	GtkTextIter iterStart, iterEnd;
+	gtk_text_buffer_get_start_iter (beforeTitleHtmlBuffer, &iterStart);
+	gtk_text_buffer_get_end_iter (beforeTitleHtmlBuffer, &iterEnd);
+	char *html = gtk_text_buffer_get_text(beforeTitleHtmlBuffer,&iterStart, &iterEnd, FALSE);
+	int s = strlen(html);
+	if(configstruct.beforeTitleHtml) free(configstruct.beforeTitleHtml);
+	configstruct.beforeTitleHtml =calloc (sizeof (char), s);
+	strncpy (configstruct.beforeTitleHtml, html, s);
+	for(i=0; i<s; i++) if(configstruct.beforeTitleHtml[i]=='\n' || configstruct.beforeTitleHtml[i]=='\r')  configstruct.beforeTitleHtml[i]=' ';
+	
+	gtk_text_buffer_get_start_iter (afterTitleHtmlBuffer, &iterStart);
+	gtk_text_buffer_get_end_iter (afterTitleHtmlBuffer, &iterEnd);
+	html = gtk_text_buffer_get_text(afterTitleHtmlBuffer,&iterStart, &iterEnd, FALSE);
+	s = strlen(html);
+	if(configstruct.afterTitleHtml) free(configstruct.afterTitleHtml);
+	configstruct.afterTitleHtml =calloc (sizeof (char), s);
+	strncpy (configstruct.afterTitleHtml, html,s);
+	for(i=0; i<s; i++) if(configstruct.afterTitleHtml[i]=='\n' || configstruct.afterTitleHtml[i]=='\r')  configstruct.afterTitleHtml[i]=' ';
+	
+	gtk_text_buffer_get_start_iter (afterAthkarHtmlBuffer, &iterStart);
+	gtk_text_buffer_get_end_iter (afterAthkarHtmlBuffer, &iterEnd);
+	html = gtk_text_buffer_get_text(afterAthkarHtmlBuffer,&iterStart, &iterEnd, FALSE);
+	s = strlen(html);
+	if(configstruct.afterAthkarHtml) free(configstruct.afterAthkarHtml);
+	configstruct.afterAthkarHtml =calloc (sizeof (char), s);
+	strncpy (configstruct.afterAthkarHtml, html,s);
+	for(i=0; i<s; i++) if(configstruct.afterAthkarHtml[i]=='\n' || configstruct.afterAthkarHtml[i]=='\r')  configstruct.afterAthkarHtml[i]=' ';
+	
+	gtk_text_buffer_get_start_iter (dhikrSeperatorBuffer, &iterStart);
+	gtk_text_buffer_get_end_iter (dhikrSeperatorBuffer, &iterEnd);
+	html = gtk_text_buffer_get_text(dhikrSeperatorBuffer,&iterStart, &iterEnd, FALSE);
+	s = strlen(html);
+	if(configstruct.dhikrSeperator) free(configstruct.dhikrSeperator);
+	configstruct.dhikrSeperator =calloc (sizeof (char), s);
+	strncpy (configstruct.dhikrSeperator, html,s);
+	for(i=0; i<s; i++) if(configstruct.dhikrSeperator[i]=='\n' || configstruct.dhikrSeperator[i]=='\r')  configstruct.dhikrSeperator[i]=' ';
+
+
+	if (gtk_widget_get_visible (configWindow))
+    {
+      gtk_widget_hide (configWindow);
+    }
+    writeConfigInFile(configfilefullpath);
+}
+void cb_reset_city(GtkComboBox *widget, gpointer configWindow){
+	gtk_combo_box_set_active (GTK_COMBO_BOX (cityCombo), -1);
+}
+void cb_fill_city_details(GtkComboBox *widget, gpointer configWindow){
+	char sql[MAXBUF];;
+  sqlite3_stmt *stmt;
+  const char * cityNO=NULL;
+  const char* countryNO=NULL;
+  const char* lat=NULL;
+  const char* lon=NULL;
+  const char* timezone=NULL;
+  
+  //cityNO = gtk_combo_box_text_get_active_text (cityCombo);
+  //countryNO = gtk_combo_box_text_get_active_text (countryCombo);
+  cityNO = gtk_combo_box_get_active_id   (GTK_COMBO_BOX(cityCombo));
+  countryNO = gtk_combo_box_get_active_id (GTK_COMBO_BOX(countryCombo));
+  sprintf(sql,"SELECT latitude,longitude,timeZone from citiestable WHERE countryNO='%s' AND cityNO='%s'",
+			countryNO, cityNO);
+  TRACE("%s\n",sql);
+
+  sqlite3_prepare_v2 (citiesdb, sql, strlen (sql) + 1, &stmt, NULL);
+
+  while (1)
+    {
+      int s;
+
+      s = sqlite3_step (stmt);
+      if (s == SQLITE_ROW)
+		{
+			char temp[20];
+		  lat = (const char *) sqlite3_column_text (stmt, 0);
+		  lon = (const char *) sqlite3_column_text (stmt, 1);
+		  timezone = (const char *) sqlite3_column_text (stmt, 2);
+		  sprintf(temp, "%f", atof(lat)/10000);
+		  gtk_entry_set_text(GTK_ENTRY(cityLat), temp);
+		  sprintf(temp, "%f", atof(lon)/10000);
+		  gtk_entry_set_text(GTK_ENTRY(cityLon), temp);
+		  sprintf(temp, "%f", atof(timezone)/100);
+		  gtk_entry_set_text(GTK_ENTRY(cityTimeDiff), temp);
+		}
+      else if (s == SQLITE_DONE)
+		{
+		  TRACE ("selection of cities done.\n");
+		  break;
+		}
+      else
+		{
+		  TRACE ("fill combo cities Failed.\n");
+		  return;
+		}
+    }
+  return;
+}
+void
+initConfigWindow ()
+{
+  int i=0;
+  
+  if (!configWindow)
+    {
+      configWindow = gtk_window_new (GTK_WINDOW_TOPLEVEL);
+      gtk_window_set_type_hint (GTK_WINDOW (configWindow),
+				GDK_WINDOW_TYPE_HINT_MENU);
+      gtk_window_set_keep_above (GTK_WINDOW (configWindow), TRUE);
+      gtk_window_set_default_size (GTK_WINDOW (configWindow), 500, 500);
+      gtk_window_set_title (GTK_WINDOW (configWindow),
+			    "برنامج أوقات الأذان: التقويم");
+      gtk_window_set_resizable (GTK_WINDOW (configWindow), TRUE);
+      g_signal_connect (G_OBJECT (configWindow), "destroy",
+			G_CALLBACK (cb_config_window_destroy), &configWindow);
+			
+      GtkWidget *page1label =	gtk_label_new ("المدينة");
+      GtkWidget *gridpage1 = gtk_grid_new ();
+      gtk_grid_set_row_spacing (GTK_GRID (gridpage1), 5);
+      gtk_grid_set_column_spacing (GTK_GRID (gridpage1), 5);
+      GtkWidget *countryLabel =	gtk_label_new ("البلد");
+      
+      gtk_grid_attach (GTK_GRID (gridpage1), countryLabel, 0, 0, 1, 1);
+      countryCombo = gtk_combo_box_text_new ();
+      //for(i=0; i<10; i++){
+		gtk_combo_box_text_append (GTK_COMBO_BOX_TEXT (countryCombo), "199", "السعودية");
+      //}
+      gtk_combo_box_set_active (GTK_COMBO_BOX (countryCombo), 0);
+      gtk_grid_attach (GTK_GRID (gridpage1), countryCombo, 0, 1, 1,1);
+      
+      GtkWidget *cityLabel =	gtk_label_new ("المدينة");
+      gtk_grid_attach (GTK_GRID (gridpage1), cityLabel, 1, 0, 1, 1);
+      cityCombo = gtk_combo_box_text_new ();
+      fill_combo_cities ();
+      
+      
+      g_signal_connect (G_OBJECT (cityCombo), "changed",
+			G_CALLBACK (cb_fill_city_details), &configWindow);
+      gtk_grid_attach (GTK_GRID (gridpage1), cityCombo, 1, 1, 1,1);
+      GtkWidget *latLabel =	gtk_label_new ("خط العرض:");
+      gtk_misc_set_alignment(GTK_MISC(latLabel),0,0);
+      cityLat = gtk_entry_new();
+     
+      GtkWidget *lonLabel =	gtk_label_new ("خط الطول:");
+      gtk_misc_set_alignment(GTK_MISC(lonLabel),0,0);
+      cityLon = gtk_entry_new();
+      
+      GtkWidget *timezoneLabel =	gtk_label_new ("المنطقة الزمنية:");
+      gtk_misc_set_alignment(GTK_MISC(timezoneLabel),0,0);
+      cityTimeDiff = gtk_entry_new();
+      
+      GtkWidget *sealevelLabel =	gtk_label_new ("الارتفاع عن مستوى البحر:");
+      gtk_misc_set_alignment(GTK_MISC(sealevelLabel),0,0);
+      citySealevel = gtk_entry_new();
+      
+      cb_fill_city_details(NULL, NULL);
+       //g_signal_connect (G_OBJECT (cityLat), "changed", G_CALLBACK (cb_reset_city), &configWindow);
+       //g_signal_connect (G_OBJECT (cityLon), "changed", G_CALLBACK (cb_reset_city), &configWindow);
+       //g_signal_connect (G_OBJECT (cityTimeDiff), "changed", G_CALLBACK (cb_reset_city), &configWindow);
+      
+      gtk_grid_attach (GTK_GRID (gridpage1), latLabel, 0, 2, 1, 1);
+      gtk_grid_attach (GTK_GRID (gridpage1), cityLat, 1, 2, 1, 1);
+      gtk_grid_attach (GTK_GRID (gridpage1), lonLabel, 0, 3, 1, 1);
+      gtk_grid_attach (GTK_GRID (gridpage1), cityLon, 1, 3, 1, 1);
+      gtk_grid_attach (GTK_GRID (gridpage1), timezoneLabel, 0, 4, 1, 1);
+      gtk_grid_attach (GTK_GRID (gridpage1), cityTimeDiff, 1, 4, 1, 1);
+      gtk_grid_attach (GTK_GRID (gridpage1), sealevelLabel, 0, 5, 1, 1);
+      gtk_grid_attach (GTK_GRID (gridpage1), citySealevel, 1, 5, 1, 1);
+      
+      
+      GtkWidget *page2label =	gtk_label_new ("الأذان");
+      GtkWidget *gridpage2 = gtk_grid_new ();
+      gtk_grid_set_row_spacing (GTK_GRID (gridpage2), 5);
+      gtk_grid_set_column_spacing (GTK_GRID (gridpage2), 5);
+      GtkWidget *adhanLabel =	gtk_label_new ("طريقة حساب أوقات الصلاة:");
+      gtk_misc_set_alignment(GTK_MISC(adhanLabel),0,0);
+      calculationMethod = gtk_combo_box_text_new ();
+      gtk_combo_box_text_append (GTK_COMBO_BOX_TEXT(calculationMethod), "6", "أم القرى");
+      gtk_combo_box_set_active (GTK_COMBO_BOX (calculationMethod), 0);
+      GtkWidget *athanfileLabel =	gtk_label_new ("ملف الأذان:");      
+      gtk_misc_set_alignment(GTK_MISC(athanfileLabel),0,0);
+      athanfile = gtk_file_chooser_button_new ("تحديد ملف الأذان",
+                                          GTK_FILE_CHOOSER_ACTION_OPEN);
+      GtkFileFilter *filter = gtk_file_filter_new ();
+      gtk_file_filter_add_pattern (filter, "*.ogg");
+      gtk_file_chooser_set_filter (GTK_FILE_CHOOSER(athanfile), filter);
+      gtk_file_chooser_set_filename(GTK_FILE_CHOOSER(athanfile), configstruct.athan);
+      GtkWidget *notificationfileLabel =	gtk_label_new ("ملف التنبيه:");     
+      gtk_misc_set_alignment(GTK_MISC(notificationfileLabel),0,0);
+      notificationfile = gtk_file_chooser_button_new ("تحديد ملف التنبيه",
+                                          GTK_FILE_CHOOSER_ACTION_OPEN);
+      gtk_file_chooser_set_filter (GTK_FILE_CHOOSER(notificationfile), filter);
+      gtk_file_chooser_set_filename(GTK_FILE_CHOOSER(notificationfile), configstruct.notificationfile);
+      gtk_grid_attach (GTK_GRID (gridpage2), adhanLabel, 0, 0, 1, 1);
+      gtk_grid_attach (GTK_GRID (gridpage2), calculationMethod, 1, 0, 2, 1);
+      gtk_grid_attach (GTK_GRID (gridpage2), athanfileLabel, 0, 1, 1, 1);
+      gtk_grid_attach (GTK_GRID (gridpage2), athanfile, 1, 1, 2, 1);
+      gtk_grid_attach (GTK_GRID (gridpage2), notificationfileLabel, 0, 2, 1, 1);
+      gtk_grid_attach (GTK_GRID (gridpage2), notificationfile, 1, 2, 2, 1);
+      
+      GtkWidget *notifyLabel =	gtk_label_new ("تنبيه");    
+      gtk_misc_set_alignment(GTK_MISC(notifyLabel),0.5,0);
+      GtkWidget *notifyBeforeLabel =	gtk_label_new ("قبل");
+      GtkWidget *notifyafterLabel =	gtk_label_new ("بعد");
+      GtkWidget *sobhLabel =	gtk_label_new ("الصبح:");    
+      gtk_misc_set_alignment(GTK_MISC(sobhLabel),0,0);
+      GtkWidget *dhorLabel =	gtk_label_new ("الظهر:");    
+      gtk_misc_set_alignment(GTK_MISC(dhorLabel),0,0);
+      GtkWidget *asrLabel =	gtk_label_new ("العصر:");    
+      gtk_misc_set_alignment(GTK_MISC(asrLabel),0,0);
+      GtkWidget *maghribLabel =	gtk_label_new ("المغرب:");    
+      gtk_misc_set_alignment(GTK_MISC(maghribLabel),0,0);
+      GtkWidget *ishaaLabel =	gtk_label_new ("العشاء:");    
+      gtk_misc_set_alignment(GTK_MISC(ishaaLabel),0,0);
+      beforesobhCombo = gtk_combo_box_text_new ();
+      beforedohrCombo = gtk_combo_box_text_new ();
+      beforeasrCombo = gtk_combo_box_text_new ();
+      beforemaghribCombo = gtk_combo_box_text_new ();
+      beforeishaaCombo = gtk_combo_box_text_new ();
+      aftersobhCombo = gtk_combo_box_text_new ();
+      afterdohrCombo = gtk_combo_box_text_new ();
+      afterasrCombo = gtk_combo_box_text_new ();
+      aftermaghribCombo = gtk_combo_box_text_new ();
+      afterishaaCombo = gtk_combo_box_text_new ();
+      
+      char temp[3];
+      for(i=0; i<60; i++){
+		  sprintf(temp,"%d",i);
+		gtk_combo_box_text_append (GTK_COMBO_BOX_TEXT(beforesobhCombo), temp, temp);
+		gtk_combo_box_text_append (GTK_COMBO_BOX_TEXT(beforedohrCombo), temp, temp);
+		gtk_combo_box_text_append (GTK_COMBO_BOX_TEXT(beforeasrCombo), temp, temp);
+		gtk_combo_box_text_append (GTK_COMBO_BOX_TEXT(beforemaghribCombo), temp, temp);
+		gtk_combo_box_text_append (GTK_COMBO_BOX_TEXT(beforeishaaCombo), temp, temp);
+		gtk_combo_box_text_append (GTK_COMBO_BOX_TEXT(aftersobhCombo), temp, temp);
+		gtk_combo_box_text_append (GTK_COMBO_BOX_TEXT(afterdohrCombo), temp, temp);
+		gtk_combo_box_text_append (GTK_COMBO_BOX_TEXT(afterasrCombo), temp, temp);
+		gtk_combo_box_text_append (GTK_COMBO_BOX_TEXT(aftermaghribCombo), temp, temp);
+		gtk_combo_box_text_append (GTK_COMBO_BOX_TEXT(afterishaaCombo), temp, temp);
+      }
+      gtk_combo_box_set_active (GTK_COMBO_BOX (beforesobhCombo), configstruct.beforeSobh);
+      gtk_combo_box_set_active (GTK_COMBO_BOX (beforedohrCombo), configstruct.beforeDohr);
+      gtk_combo_box_set_active (GTK_COMBO_BOX (beforeasrCombo), configstruct.beforeAsr);
+      gtk_combo_box_set_active (GTK_COMBO_BOX (beforemaghribCombo), configstruct.beforeMaghrib);
+      gtk_combo_box_set_active (GTK_COMBO_BOX (beforeishaaCombo), configstruct.beforeIsha);
+      gtk_combo_box_set_active (GTK_COMBO_BOX (aftersobhCombo), configstruct.afterSobh);
+      gtk_combo_box_set_active (GTK_COMBO_BOX (afterdohrCombo), configstruct.afterDohr);
+      gtk_combo_box_set_active (GTK_COMBO_BOX (afterasrCombo), configstruct.afterAsr);
+      gtk_combo_box_set_active (GTK_COMBO_BOX (aftermaghribCombo), configstruct.afterMaghrib);
+      gtk_combo_box_set_active (GTK_COMBO_BOX (afterishaaCombo), configstruct.afterIsha);
+      gtk_grid_attach (GTK_GRID (gridpage2), notifyLabel, 0, 3, 1, 1);
+      gtk_grid_attach (GTK_GRID (gridpage2), notifyBeforeLabel, 1, 3, 1, 1);	
+      gtk_grid_attach (GTK_GRID (gridpage2), notifyafterLabel, 2, 3, 1, 1);	
+      gtk_grid_attach (GTK_GRID (gridpage2), sobhLabel, 0, 4, 1, 1);
+      gtk_grid_attach (GTK_GRID (gridpage2), dhorLabel, 0, 5, 1, 1);
+      gtk_grid_attach (GTK_GRID (gridpage2), asrLabel, 0, 6, 1, 1);
+      gtk_grid_attach (GTK_GRID (gridpage2), maghribLabel, 0, 7, 1, 1);
+      gtk_grid_attach (GTK_GRID (gridpage2), ishaaLabel, 0, 8, 1, 1);	
+      gtk_grid_attach (GTK_GRID (gridpage2), beforesobhCombo, 1, 4, 1, 1);
+      gtk_grid_attach (GTK_GRID (gridpage2), beforedohrCombo, 1, 5, 1, 1);
+      gtk_grid_attach (GTK_GRID (gridpage2), beforeasrCombo, 1, 6, 1, 1);
+      gtk_grid_attach (GTK_GRID (gridpage2), beforemaghribCombo, 1, 7, 1, 1);
+      gtk_grid_attach (GTK_GRID (gridpage2), beforeishaaCombo, 1, 8, 1, 1);	
+      gtk_grid_attach (GTK_GRID (gridpage2), aftersobhCombo, 2, 4, 1, 1);
+      gtk_grid_attach (GTK_GRID (gridpage2), afterdohrCombo, 2, 5, 1, 1);
+      gtk_grid_attach (GTK_GRID (gridpage2), afterasrCombo, 2, 6, 1, 1);
+      gtk_grid_attach (GTK_GRID (gridpage2), aftermaghribCombo, 2,7, 1, 1);
+      gtk_grid_attach (GTK_GRID (gridpage2), afterishaaCombo, 2, 8, 1, 1);
+      	 
+      	 
+      GtkWidget *page3label =	gtk_label_new ("الأذكار");
+      GtkWidget *gridpage3 = gtk_grid_new ();
+      gtk_grid_set_row_spacing (GTK_GRID (gridpage3), 5);
+      gtk_grid_set_column_spacing (GTK_GRID (gridpage3), 5);
+      //GtkWidget *athkarLabel =	gtk_label_new ("الأذكار");
+      //gtk_grid_attach (GTK_GRID (gridpage3), athkarLabel, 0, 0, 1, 1);
+      
+      //GtkWidget *showSleepingAthkarCheck = gtk_check_button_new_with_label ("إظهار أذكار النوم؟");
+      //GtkWidget *showEveningAthkarCheck = gtk_check_button_new_with_label ("إظهار أذكار المساء؟");
+      //GtkWidget *showMorningAthkarCheck = gtk_check_button_new_with_label ("إظهار أذكار الصباح؟");
+      GtkWidget *sleepingAthkarLabel =	gtk_label_new ("بعد كم دقيقة من العشاء تظهر أذكار النوم؟");    
+      gtk_misc_set_alignment(GTK_MISC(sleepingAthkarLabel),0,0);
+      GtkWidget *eveningAthkarLabel =	gtk_label_new ("بعد كم دقيقة من العصر تظهر أذكار المساء؟");    
+      gtk_misc_set_alignment(GTK_MISC(eveningAthkarLabel),0,0);
+      GtkWidget *morningAthkarLabel =	gtk_label_new ("بعد كم دقيقة من الصبح تظهر أذكار الصباح؟");    
+      gtk_misc_set_alignment(GTK_MISC(morningAthkarLabel),0,0);
+      GtkWidget *specialAthkarDurationLabel =	gtk_label_new ("فترة ظهور أذكار النوم والمساء والصباح:");    
+      gtk_misc_set_alignment(GTK_MISC(specialAthkarDurationLabel),0,0);
+      GtkWidget *athkarPeriodLabel =	gtk_label_new ("فترة ظهور الأذكار الأخرى:");    
+      gtk_misc_set_alignment(GTK_MISC(athkarPeriodLabel),0,0);
+      
+      gtk_grid_attach (GTK_GRID (gridpage3), sleepingAthkarLabel, 0, 0, 2, 1);
+      gtk_grid_attach (GTK_GRID (gridpage3), eveningAthkarLabel, 0, 1, 2, 1);
+      gtk_grid_attach (GTK_GRID (gridpage3), morningAthkarLabel, 0, 2, 2, 1);
+      
+      
+      sleepingAthkarCombo = gtk_combo_box_text_new ();
+      /*GtkWidget *sleepingAthkarEntry = gtk_entry_new();
+      numberDetails.min = -1;
+      numberDetails.max = 120;
+      g_signal_connect (G_OBJECT (sleepingAthkarEntry), "changed",
+			G_CALLBACK (cb_config_fill_number), &numberDetails);
+		*/	
+      eveningAthkarCombo = gtk_combo_box_text_new ();
+      morningAthkarCombo = gtk_combo_box_text_new ();
+      specialAthkarDurationCombo = gtk_combo_box_text_new ();
+      otherAthkarperiodCombo = gtk_combo_box_text_new ();
+      gtk_combo_box_text_append (GTK_COMBO_BOX_TEXT(sleepingAthkarCombo), "-1", "لا تظهر");
+      gtk_combo_box_text_append (GTK_COMBO_BOX_TEXT(eveningAthkarCombo), "-1", "لا تظهر");
+      gtk_combo_box_text_append (GTK_COMBO_BOX_TEXT(morningAthkarCombo), "-1", "لا تظهر");
+		
+      for(i=0; i<=60; i++){
+		  sprintf(temp,"%d",i);
+		gtk_combo_box_text_append (GTK_COMBO_BOX_TEXT(sleepingAthkarCombo), temp, temp);
+		gtk_combo_box_text_append (GTK_COMBO_BOX_TEXT(eveningAthkarCombo), temp, temp);
+		gtk_combo_box_text_append (GTK_COMBO_BOX_TEXT(morningAthkarCombo), temp, temp);
+		gtk_combo_box_text_append (GTK_COMBO_BOX_TEXT(specialAthkarDurationCombo), temp, temp);
+		gtk_combo_box_text_append (GTK_COMBO_BOX_TEXT(otherAthkarperiodCombo), temp, temp);
+      }
+      //TRACE("InitConfig: configstruct.sleepingAthkar=%d\n",configstruct.sleepingAthkar);
+      if(configstruct.sleepingAthkar == 0)
+		gtk_combo_box_set_active (GTK_COMBO_BOX (sleepingAthkarCombo), 0);
+	  else
+	    gtk_combo_box_set_active (GTK_COMBO_BOX (sleepingAthkarCombo), configstruct.sleepingAthkarTime+1);
+      if(configstruct.eveningAthkar == 0)
+		gtk_combo_box_set_active (GTK_COMBO_BOX (eveningAthkarCombo), 0);
+	  else
+        gtk_combo_box_set_active (GTK_COMBO_BOX (eveningAthkarCombo), configstruct.eveningAthkarTime+1);
+      if(configstruct.morningAthkar == 0)
+		gtk_combo_box_set_active (GTK_COMBO_BOX (morningAthkarCombo), 0);
+	  else
+        gtk_combo_box_set_active (GTK_COMBO_BOX (morningAthkarCombo), configstruct.morningAthkarTime+1);
+      gtk_combo_box_set_active (GTK_COMBO_BOX (specialAthkarDurationCombo), configstruct.specialAthkarDuration);
+      gtk_combo_box_set_active (GTK_COMBO_BOX (otherAthkarperiodCombo), configstruct.athkarPeriod);
+      
+      gtk_grid_attach (GTK_GRID (gridpage3), sleepingAthkarCombo, 2, 0, 1, 1);
+      //gtk_grid_attach (GTK_GRID (gridpage3), sleepingAthkarEntry, 2, 0, 1, 1);
+      gtk_grid_attach (GTK_GRID (gridpage3), eveningAthkarCombo, 2, 1, 1, 1);
+      gtk_grid_attach (GTK_GRID (gridpage3), morningAthkarCombo, 2, 2, 1, 1);
+      
+      gtk_grid_attach (GTK_GRID (gridpage3), specialAthkarDurationLabel, 0, 3, 2, 1);
+      gtk_grid_attach (GTK_GRID (gridpage3), specialAthkarDurationCombo, 2, 3, 1, 1);
+      gtk_grid_attach (GTK_GRID (gridpage3), athkarPeriodLabel, 0, 4, 2, 1);
+      gtk_grid_attach (GTK_GRID (gridpage3), otherAthkarperiodCombo, 2, 4, 1, 1);
+      
+      
+      GtkWidget *page4label =	gtk_label_new ("شاشة الأذكار");
+      GtkWidget *gridpage4 = gtk_grid_new ();
+      gtk_grid_set_row_spacing (GTK_GRID (gridpage4), 5);
+      gtk_grid_set_column_spacing (GTK_GRID (gridpage4), 5);
+      
+      GtkWidget *beforeTitleHtmlView;      
+      GtkWidget *beforeTitleHtmlLabel =	gtk_label_new ("كود HTML قبل العنوان:");
+      beforeTitleHtmlView = gtk_text_view_new ();
+      beforeTitleHtmlBuffer = gtk_text_view_get_buffer (GTK_TEXT_VIEW (beforeTitleHtmlView));
+      gtk_text_buffer_set_text (beforeTitleHtmlBuffer, configstruct.beforeTitleHtml, -1);
+      gtk_text_view_set_wrap_mode (GTK_TEXT_VIEW (beforeTitleHtmlView), GTK_WRAP_WORD);
+      GtkWidget *sw1 = gtk_scrolled_window_new (NULL, NULL);
+
+      gtk_scrolled_window_set_policy (GTK_SCROLLED_WINDOW (sw1),
+				      GTK_POLICY_AUTOMATIC,
+				      GTK_POLICY_AUTOMATIC);
+	  gtk_scrolled_window_set_min_content_height(GTK_SCROLLED_WINDOW(sw1), 100);
+	  gtk_scrolled_window_set_min_content_width(GTK_SCROLLED_WINDOW(sw1), 300);
+      gtk_container_add (GTK_CONTAINER (sw1), beforeTitleHtmlView);
+
+      GtkWidget *afterTitleHtmlView;
+      GtkWidget *afterTitleHtmlLabel =	gtk_label_new ("كود HTML بعد العنوان:");
+      afterTitleHtmlView = gtk_text_view_new ();
+      afterTitleHtmlBuffer = gtk_text_view_get_buffer (GTK_TEXT_VIEW (afterTitleHtmlView));
+      gtk_text_buffer_set_text (afterTitleHtmlBuffer, configstruct.afterTitleHtml, -1);
+      gtk_text_view_set_wrap_mode (GTK_TEXT_VIEW (afterTitleHtmlView), GTK_WRAP_WORD);
+      GtkWidget *sw2 = gtk_scrolled_window_new (NULL, NULL);
+
+      gtk_scrolled_window_set_policy (GTK_SCROLLED_WINDOW (sw2),
+				      GTK_POLICY_AUTOMATIC,
+				      GTK_POLICY_AUTOMATIC);
+	  gtk_scrolled_window_set_min_content_height(GTK_SCROLLED_WINDOW(sw2), 50);
+	  gtk_scrolled_window_set_min_content_width(GTK_SCROLLED_WINDOW(sw2), 300);
+      gtk_container_add (GTK_CONTAINER (sw2), afterTitleHtmlView);
+      
+      GtkWidget *afterAthkarHtmlView;
+      GtkWidget *afterAthkarHtmlLabel =	gtk_label_new ("كود HTML بعد الأذكار:");
+      afterAthkarHtmlView = gtk_text_view_new ();
+      afterAthkarHtmlBuffer = gtk_text_view_get_buffer (GTK_TEXT_VIEW (afterAthkarHtmlView));
+      gtk_text_buffer_set_text (afterAthkarHtmlBuffer, configstruct.afterAthkarHtml, -1);
+      gtk_text_view_set_wrap_mode (GTK_TEXT_VIEW (afterAthkarHtmlView), GTK_WRAP_WORD);
+      GtkWidget *sw3 = gtk_scrolled_window_new (NULL, NULL);
+
+      gtk_scrolled_window_set_policy (GTK_SCROLLED_WINDOW (sw3),
+				      GTK_POLICY_AUTOMATIC,
+				      GTK_POLICY_AUTOMATIC);
+	  gtk_scrolled_window_set_min_content_height(GTK_SCROLLED_WINDOW(sw3), 50);
+	  gtk_scrolled_window_set_min_content_width(GTK_SCROLLED_WINDOW(sw3), 300);
+      gtk_container_add (GTK_CONTAINER (sw3), afterAthkarHtmlView);
+      
+      
+      GtkWidget *dhikrSeperatorView;
+      GtkWidget *dhikrSeperatorLabel =	gtk_label_new ("كود HTML بين الأذكار:");
+      dhikrSeperatorView = gtk_text_view_new ();
+      dhikrSeperatorBuffer = gtk_text_view_get_buffer (GTK_TEXT_VIEW (dhikrSeperatorView));
+      gtk_text_buffer_set_text (dhikrSeperatorBuffer, configstruct.dhikrSeperator, -1);
+      gtk_text_view_set_wrap_mode (GTK_TEXT_VIEW (dhikrSeperatorView), GTK_WRAP_WORD);
+      GtkWidget *sw4 = gtk_scrolled_window_new (NULL, NULL);
+
+      gtk_scrolled_window_set_policy (GTK_SCROLLED_WINDOW (sw4),
+				      GTK_POLICY_AUTOMATIC,
+				      GTK_POLICY_AUTOMATIC);
+	  gtk_scrolled_window_set_min_content_height(GTK_SCROLLED_WINDOW(sw4), 50);
+	  gtk_scrolled_window_set_min_content_width(GTK_SCROLLED_WINDOW(sw4), 300);
+      gtk_container_add (GTK_CONTAINER (sw4), dhikrSeperatorView);
+      
+      
+      /*gtk_grid_attach (GTK_GRID (gridpage4), beforeTitleHtmlLabel, 0, 0, 1, 1);
+      gtk_grid_attach (GTK_GRID (gridpage4), sw1, 0, 1, 1, 1);
+      gtk_grid_attach (GTK_GRID (gridpage4), afterTitleHtmlLabel, 0, 2, 1, 1);
+      gtk_grid_attach (GTK_GRID (gridpage4), sw2, 0, 3, 1, 1);
+      gtk_grid_attach (GTK_GRID (gridpage4), afterAthkarHtmlLabel, 0, 4, 1, 1);
+      gtk_grid_attach (GTK_GRID (gridpage4), sw3, 0, 5, 1, 1);
+      gtk_grid_attach (GTK_GRID (gridpage4), dhikrSeperatorLabel, 0, 6, 1, 1);
+      gtk_grid_attach (GTK_GRID (gridpage4), sw4, 0, 7, 1, 1);
+      */
+      GtkWidget * vbox = gtk_box_new (GTK_ORIENTATION_VERTICAL, 5);
+      gtk_box_pack_start (GTK_BOX(vbox), beforeTitleHtmlLabel, TRUE, TRUE, 5);
+      gtk_box_pack_start (GTK_BOX(vbox), sw1, TRUE, TRUE, 5);
+      gtk_box_pack_start (GTK_BOX(vbox), afterTitleHtmlLabel, TRUE, TRUE, 5);
+      gtk_box_pack_start (GTK_BOX(vbox), sw2, TRUE, TRUE, 5);
+      gtk_box_pack_start (GTK_BOX(vbox), afterAthkarHtmlLabel, TRUE, TRUE, 5);
+      gtk_box_pack_start (GTK_BOX(vbox), sw3, TRUE, TRUE, 5);
+      gtk_box_pack_start (GTK_BOX(vbox), dhikrSeperatorLabel, TRUE, TRUE, 5);
+      gtk_box_pack_start (GTK_BOX(vbox), sw4, TRUE, TRUE, 5);
+		
+      GtkWidget *notebook = gtk_notebook_new ();
+      gtk_notebook_append_page (GTK_NOTEBOOK(notebook),gridpage1,page1label);
+      gtk_notebook_append_page (GTK_NOTEBOOK(notebook),gridpage2,page2label);
+      gtk_notebook_append_page (GTK_NOTEBOOK(notebook),gridpage3,page3label);
+      gtk_notebook_append_page (GTK_NOTEBOOK(notebook),vbox,page4label);
+      
+      GtkWidget * vboxMain = gtk_box_new (GTK_ORIENTATION_VERTICAL, 5);
+      GtkWidget * vboxButtons = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 5);
+      GtkWidget * buttonOk = gtk_button_new_with_label ("موافق");
+      GtkWidget * buttonCancel = gtk_button_new_with_label ("إلغاء");
+      g_signal_connect (G_OBJECT (buttonCancel), "clicked",
+			G_CALLBACK (cb_config_window_destroy), &configWindow);
+			
+      g_signal_connect (G_OBJECT (buttonOk), "clicked",
+			G_CALLBACK (cb_config_window_ok), &configWindow);
+      gtk_box_pack_start (GTK_BOX(vboxButtons), buttonOk, TRUE, TRUE, 5);
+      gtk_box_pack_start (GTK_BOX(vboxButtons), buttonCancel, TRUE, TRUE, 5);
+      
+      gtk_box_pack_start (GTK_BOX(vboxMain), notebook, TRUE, TRUE, 5);
+      gtk_box_pack_start (GTK_BOX(vboxMain), vboxButtons, TRUE, TRUE, 5);
+      
+      gtk_container_add (GTK_CONTAINER (configWindow), GTK_WIDGET(vboxMain));
+
+    }
+
+}
+
+void settings_callback(){
+	
+	initConfigWindow ();
+	if (!gtk_widget_get_visible (configWindow))
+    {
+      gtk_widget_show_all (configWindow);
+    }
+}
 GtkWidget *dateWindow = NULL;
 GtkWidget *calendar;
 GtkWidget *HijriDateLabelValue;
@@ -635,6 +1309,7 @@ calendar_day_selected (GtkWidget * widget)
 {
   char hiriDate[256];
   char salatTimes[256];
+  
   guint day, month, year;
   sDate UmAlQuraDate;
   sDate cHijriDate;
@@ -644,8 +1319,8 @@ calendar_day_selected (GtkWidget * widget)
   gtk_calendar_get_date (GTK_CALENDAR (calendar), &year, &month, &day);
   G2H (&UmAlQuraDate, day, month, year);
   h_date(&cHijriDate, day, month, year);
-  sprintf (hiriDate, "أم القرى: %d/%d/%d\n هجري: %d/%d/%d", 
-	UmAlQuraDate.day, UmAlQuraDate.month, UmAlQuraDate.year, 
+  sprintf (hiriDate, "أم القرى: %02d/%02d/%d\n هجري  : %02d/%02d/%d", 
+  	UmAlQuraDate.day, UmAlQuraDate.month, UmAlQuraDate.year, 
 	cHijriDate.day, cHijriDate.month, cHijriDate.year);
   gtk_label_set_text (GTK_LABEL (HijriDateLabelValue), hiriDate);
 
@@ -656,13 +1331,17 @@ calendar_day_selected (GtkWidget * widget)
   prayerDate1->year = year;
   getPrayerTimes (loc, calcMethod, prayerDate1, ptList1);
 
-  sprintf (salatTimes,
-	   "%s\t%s\t%s\t%s\t%s\n%d:%02d\t%d:%02d\t%d:%02d\t%d:%02d\t%d:%02d",
+  sprintf (salatTimes,//"——\t——\t——\t——\t——\t\n%s\t%s\t%s\t%s\t%s\n%02d:%02d\t%02d:%02d\t%02d:%02d\t%02d:%02d\t%02d:%02d",
+  //"———————————————\n%s\t%s\t%s\t%s\t%s\n%02d:%02d\t%02d:%02d\t%02d:%02d\t%02d:%02d\t%02d:%02d",
+  "%s\t%s\t%s\t%s\t%s\n%02d:%02d\t%02d:%02d\t%02d:%02d\t%02d:%02d\t%02d:%02d",
 	   "الصبح", "الظهر", "العصر", "المغرب",
 	   "العشاء", ptList1[0].hour, ptList1[0].minute,
 	   ptList1[2].hour, ptList1[2].minute, ptList1[3].hour,
 	   ptList1[3].minute, ptList1[4].hour, ptList1[4].minute,
 	   ptList1[5].hour, ptList1[5].minute);
+  //char* salatTimes;
+  //gtk_label_set_markup (GTK_LABEL (salatTimesLabel), salatTimes);
+  //g_free(salatTimes);
   gtk_label_set_text (GTK_LABEL (salatTimesLabel), salatTimes);
   free (prayerDate1);
 }
@@ -706,7 +1385,7 @@ initDateWindow ()
       gtk_grid_set_row_spacing (GTK_GRID (grid), 5);
       gtk_grid_set_column_spacing (GTK_GRID (grid), 5);
       calendar = gtk_calendar_new ();
-      GtkWidget *todayButton = gtk_button_new_with_label ("today");
+      GtkWidget *todayButton = gtk_button_new_with_label ("اليوم");
 
       GtkWidget *HijriDateLabel =
 	gtk_label_new ("التاريخ الهجري: ");
@@ -895,6 +1574,55 @@ show_dhikr_callback (void *data, int argc, char **argv, char **azColName)
   return 0;
 }
 */
+static void
+fill_combo_cities ()
+{
+
+  char *sql = NULL;
+  sqlite3_stmt *stmt;
+  const char * cityNO=NULL;
+  const char* cityName=NULL;
+  int row = 0, cityComboId=0;
+      sql =
+	"SELECT cityNO, cityName from citiestable WHERE countryNO='199'";
+
+
+  sqlite3_prepare_v2 (citiesdb, sql, strlen (sql) + 1, &stmt, NULL);
+
+  while (1)
+    {
+      int s;
+
+      s = sqlite3_step (stmt);
+      if (s == SQLITE_ROW)
+		{
+
+		  cityNO = (const char *) sqlite3_column_text (stmt, 0);
+		  cityName = (const char *) sqlite3_column_text (stmt, 1);
+		  gtk_combo_box_text_append (GTK_COMBO_BOX_TEXT(cityCombo), cityNO, cityName);
+		  if(configstruct.cityId == atoi(cityNO)){
+			  cityComboId = row;
+			  gtk_combo_box_set_active (GTK_COMBO_BOX (cityCombo), cityComboId);
+			  
+		  }
+			
+		  row++;
+		  // TRACE ("Special Athkar shown: %d\n", row);
+		}
+      else if (s == SQLITE_DONE)
+		{
+		  TRACE ("selection of cities done.\n");
+		  break;
+		}
+      else
+		{
+		  TRACE ("fill combo cities Failed.\n");
+		  return;
+		}
+    }
+    
+  return;
+}
 static void
 show_athkar (int AthkarType)
 {
@@ -1229,15 +1957,49 @@ update_remaining (void)
 gboolean
 update_data (gpointer data)
 {
+	int i=0;
+    
+  getMethod (configstruct.method, calcMethod);
+  if(configstruct.method == 6) //Makkah NOTE: fajr was 19 degrees before 1430 hijri
+    calcMethod->fajrAng = 18.5;
+
+  loc->degreeLong = configstruct.lon;
+  loc->degreeLat = configstruct.lat;
+  loc->gmtDiff = configstruct.correctiond;
+  loc->dst = 0;
+  loc->seaLevel = configstruct.height;
+  loc->pressure = 1010;
+  loc->temperature = 10;
+
+
+  update_date ();
+
+  // Prayer time
+  getPrayerTimes (loc, calcMethod, prayerDate, ptList);
+
+  gchar *prayer_time_text[6];
+  for (i = 0; i < 6; i++)
+    {
+      prayer_time_text[i] = g_malloc (100);
+      //Makkah NOTE: ishaa adhan is after 120 mn of maghrib (instead of 90) with umm alqura method
+      if(configstruct.method == 6 && i==5 && hijridate.month==9){
+		  incrementTime(&(ptList[i].hour), &(ptList[i].minute), 30);
+	  }
+		
+      g_snprintf (prayer_time_text[i], 100, "%s: %d:%02d", names[i],
+		  ptList[i].hour, ptList[i].minute);
+
+      //gtk_label_set_text(GTK_LABEL(prayer_times_label[i]), prayer_time_text[i]);
+      //gtk_menu_item_set_label(GTK_MENU_ITEM(athantimes_items[i]), prayer_time_text[i]);
+      g_object_set (athantimes_items[i], "label", prayer_time_text[i], NULL);
+    }
+
+
   next_prayer ();
   update_remaining ();
   //menu_item_set_label(GTK_MENU_ITEM(menu), next_prayer_string);
 
-  getCurrentHijriDate ();
-  char currenthijridate[20];
-  sprintf (currenthijridate, "%d/%d/%d هـ", hijridate.year,
-	   hijridate.month, hijridate.day);
-  g_object_set (hijri_item, "label", currenthijridate, NULL);
+  
 
   show_dhikr (NULL);
   return TRUE;
@@ -1388,14 +2150,19 @@ initializeAthkarDatabase ()
       /* Execute SQL statement */
       rc = sqlite3_exec (dhikrdb, sql, count_athkar_callback, NULL, &zErrMsg);
       if (rc != SQLITE_OK)
-	{
-	  fprintf (stderr, "SQL error: %s\n", zErrMsg);
-	  sqlite3_free (zErrMsg);
-	}
+		{
+		  fprintf (stderr, "SQL error: %s\n", zErrMsg);
+		  sqlite3_free (zErrMsg);
+		}
       else
-	{
-	  TRACE ("Athkar counted successfully\n");
-	}
+		{
+		  TRACE ("Athkar counted successfully\n");
+		}
+    }
+    rc = sqlite3_open ("/usr/share/indicator-athantime/countries.db", &citiesdb);
+  if (rc)
+    {
+      TRACE ("Can't open countries database: %s\n", sqlite3_errmsg (citiesdb));
     }
 }
 
@@ -1464,19 +2231,18 @@ main (int argc, char **argv)
 
 
   get_config (FILENAME);	// sets up configstruct
-  if (configstruct.lat == 0)
+  /*if (configstruct.lat == 0) //fixme: how to check if an error occured while reading the config file
     {
 
       printf ("An error occured while reading the config file %s\n",
 	      FILENAME);
       fflush (stdout);
       return 0;
-    }
+    }*/
   // Struct members
   TRACE ("Reading config file:\n");
   TRACE ("lat: %f\n", configstruct.lat);
   TRACE ("lon: %f\n", configstruct.lon);
-  TRACE ("city: %s\n", configstruct.city);
   TRACE ("height: %f\n", configstruct.height);
   TRACE ("correctiond: %d\n", configstruct.correctiond);
   TRACE ("method: %d\n", configstruct.method);
@@ -1510,6 +2276,7 @@ main (int argc, char **argv)
   TRACE ("afterAthkarHtml: %s\n", configstruct.afterAthkarHtml);
   TRACE ("dhikrSeperator: %s\n", configstruct.dhikrSeperator);
 
+//writeConfigInFile(".athantime2.conf");
   FILE *file = fopen (configstruct.athan, "r");
   if (file == NULL)
     {
@@ -1602,6 +2369,14 @@ main (int argc, char **argv)
   g_signal_connect (stopathan_item, "activate",
 		    G_CALLBACK (stop_athan_callback), NULL);
 
+  sep = gtk_separator_menu_item_new ();
+  gtk_menu_shell_append (GTK_MENU_SHELL (indicator_menu), sep);
+
+  settings_item = gtk_menu_item_new_with_label ("الإعدادات"); //settings item
+  gtk_menu_shell_append (GTK_MENU_SHELL (indicator_menu), settings_item);
+  g_signal_connect (settings_item, "activate",
+		    G_CALLBACK (settings_callback), NULL);
+
   //quit item
   //quit_item = gtk_menu_item_new_with_label("\xD8\xA3\xD8\xBA\xD9\x84\xD9\x82"); //quit item
   //gtk_menu_shell_append(GTK_MENU_SHELL(indicator_menu), quit_item);
@@ -1618,38 +2393,12 @@ main (int argc, char **argv)
   app_indicator_set_menu (indicator, GTK_MENU (indicator_menu));
 
   calcMethod = g_malloc (sizeof (Method));
-  getMethod (configstruct.method, calcMethod);
-
+  
   loc = g_malloc (sizeof (Location));
-
-  loc->degreeLong = configstruct.lon;
-  loc->degreeLat = configstruct.lat;
-  loc->gmtDiff = configstruct.correctiond;
-  loc->dst = 0;
-  loc->seaLevel = configstruct.height;
-  loc->pressure = 1010;
-  loc->temperature = 10;
-
-
-  update_date ();
-
-  // Prayer time
-  getPrayerTimes (loc, calcMethod, prayerDate, ptList);
-
-  gchar *prayer_time_text[6];
-  for (i = 0; i < 6; i++)
-    {
-      prayer_time_text[i] = g_malloc (100);
-      g_snprintf (prayer_time_text[i], 100, "%s: %d:%02d", names[i],
-		  ptList[i].hour, ptList[i].minute);
-
-      //gtk_label_set_text(GTK_LABEL(prayer_times_label[i]), prayer_time_text[i]);
-      //gtk_menu_item_set_label(GTK_MENU_ITEM(athantimes_items[i]), prayer_time_text[i]);
-      g_object_set (athantimes_items[i], "label", prayer_time_text[i], NULL);
-    }
 
   // Next prayer
   next_prayer_string = g_malloc (sizeof (gchar) * 400);
+  getCoordinateOfCity();
   update_data (NULL);
 
 

@@ -1,6 +1,6 @@
 all: indicator-athantime
 CC = gcc
-CFLAGS = -Wall -g -O2 `pkg-config --cflags gtk+-3.0` `pkg-config --cflags appindicator3-0.1` `pkg-config --cflags  gstreamer-1.0`  -I/usr/include/itl `pkg-config --cflags sqlite3` `pkg-config --cflags webkitgtk-3.0`
+CFLAGS =  -Wall -g -O2 `pkg-config --cflags gtk+-3.0` `pkg-config --cflags appindicator3-0.1` `pkg-config --cflags  gstreamer-1.0`  -I/usr/local/include/itl `pkg-config --cflags sqlite3` `pkg-config --cflags webkitgtk-3.0`
 LIBS = -litl -lm `pkg-config --libs gtk+-3.0` `pkg-config --libs  appindicator3-0.1` `pkg-config --libs  gstreamer-1.0` `pkg-config --libs sqlite3` `pkg-config --libs webkitgtk-3.0`
 
 	
@@ -21,6 +21,7 @@ install:
 	cp indicator-athantime2.png /usr/share/indicator-athantime
 	cp athan.ogg /usr/share/indicator-athantime
 	cp adhkar.db /usr/share/indicator-athantime
+	cp countries.db /usr/share/indicator-athantime
 	cp Rooster_Short_Crow.ogg /usr/share/indicator-athantime
 	cp Warbling_Vireo-Mike_Koenig-89869915.ogg /usr/share/indicator-athantime
 	cp killdeer_song-Mike_Koenig-1144525481.ogg /usr/share/indicator-athantime
