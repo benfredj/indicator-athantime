@@ -1,7 +1,7 @@
 all: indicator-athantime
 CC = gcc
-CFLAGS =  -Wall -g -O2 `pkg-config --cflags gtk+-3.0` `pkg-config --cflags appindicator3-0.1` `pkg-config --cflags  gstreamer-1.0`  -I/usr/local/include/itl `pkg-config --cflags sqlite3` `pkg-config --cflags webkitgtk-3.0`
-LIBS = -litl -lm `pkg-config --libs gtk+-3.0` `pkg-config --libs  appindicator3-0.1` `pkg-config --libs  gstreamer-1.0` `pkg-config --libs sqlite3` `pkg-config --libs webkitgtk-3.0`
+CFLAGS = -O2 `pkg-config --cflags gtk+-3.0` `pkg-config --cflags appindicator3-0.1` `pkg-config --cflags  gstreamer-1.0`  -I/usr/include/itl -I/usr/include/libappindicator-0.1 -I/usr/include/gstreamer-1.0 -I/usr/include/webkitgtk-1.0 -I/usr/include/libsoup-2.4
+LIBS = -L/snap/gnome-3-38-2004/87/usr/lib/x86_64-linux-gnu -litl -lm -lappindicator3 `pkg-config --libs gtk+-3.0` `pkg-config --libs  appindicator3` `pkg-config --libs  gstreamer-1.0` -lsqlite3 -lwebkit2gtk-4.0
 
 	
 indicator-athantime: umm_alqura.o indicator-athantime.c
@@ -14,7 +14,7 @@ umm_alqura.o: umm_alqura.c
 	
 install:
 	install --mode=755 indicator-athantime  /usr/bin/
-	cp .athantime.conf $(HOME)
+	install --mode=755 --owner=$(USER) .athantime.conf $(HOME)
 	mkdir -p /usr/share/indicator-athantime
 	cp indicator-athantime.svg /usr/share/icons/hicolor/scalable/apps
 	gtk-update-icon-cache -f /usr/share/icons/hicolor/
